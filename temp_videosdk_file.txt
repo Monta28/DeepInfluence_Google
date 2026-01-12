@@ -1,0 +1,640 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
+import { MeetingProvider, useMeeting, useParticipant } from "@videosdk.live/react-sdk";
+
+interface VideoSessionProps {
+  sessionId: string;
+}
+
+function VideoControls({ sessionId, seconds, perMinute, onEndCall, isRecording, bothPresent }: any) {
+  return (
+    <div className="bg-gray-800 border-b border-gray-700 px-3 sm:px-6 py-3 sm:py-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 w-full sm:w-auto">
+          <h1 className="text-lg sm:text-xl font-bold text-white">Session - {sessionId}</h1>
+          <div className="text-xs sm:text-sm text-gray-300 flex gap-3 sm:gap-4 items-center">
+            <span>⏱ {Math.floor(seconds/60).toString().padStart(2,'0')}:{(seconds%60).toString().padStart(2,'0')}</span>
+            {perMinute > 0 && (
+              <span>💰 {Math.ceil(seconds/60) * perMinute} coins</span>
+            )}
+            {isRecording && (
+              <span className="flex items-center gap-1 bg-red-600 px-2 py-1 rounded text-white text-xs font-semibold">
+                <span className="animate-pulse">🔴</span> REC
+              </span>
+            )}
+            {!bothPresent && (
+              <span className="bg-yellow-600 px-2 py-1 rounded text-white text-xs">
+                ⏳ En attente d'un 2ème participant
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={onEndCall}
+            disabled={seconds < 60}
+            className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded text-sm sm:text-base text-white ${seconds < 60 ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+          >
+            Terminer {seconds < 60 ? '(min 1 min)' : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ParticipantView({ participantId }: { participantId: string }) {
+  const { webcamStream, micStream, webcamOn, micOn, displayName, isLocal } = useParticipant(participantId);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
+
+  useEffect(() => {
+    if (videoRef.current && webcamStream) {
+      const mediaStream = new MediaStream();
+      mediaStream.addTrack(webcamStream.track);
+      videoRef.current.srcObject = mediaStream;
+
+      // Attendre que la vidéo soit prête avant de jouer
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current?.play().catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.error('Error playing video:', err);
+          }
+        });
+      };
+    }
+
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [webcamStream]);
+
+  useEffect(() => {
+    if (audioRef.current && micStream && !isLocal) {
+      const mediaStream = new MediaStream();
+      mediaStream.addTrack(micStream.track);
+      audioRef.current.srcObject = mediaStream;
+
+      // Attendre que l'audio soit prêt avant de jouer
+      audioRef.current.onloadedmetadata = () => {
+        audioRef.current?.play().catch((err) => {
+          if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+            console.error('Error playing audio:', err);
+          }
+          if (err.name === 'NotAllowedError') {
+            setAudioBlocked(true);
+          }
+        });
+      };
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.srcObject = null;
+      }
+    };
+  }, [micStream, isLocal]);
+
+  const enableAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.play().then(() => {
+        setAudioBlocked(false);
+      }).catch((err) => {
+        console.error('Failed to enable audio:', err);
+      });
+    }
+  };
+
+  return (
+    <div className="relative bg-gray-800 rounded-lg overflow-hidden w-full h-full">
+      {webcamOn ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isLocal}
+          className="w-full h-full object-contain"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gray-700">
+          <div className="text-center">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+              <span className="text-lg sm:text-2xl font-bold text-white">
+                {displayName?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+            </div>
+            <p className="text-sm sm:text-base text-white">{displayName || 'Participant'}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Audio element for remote participants */}
+      {!isLocal && (
+        <audio ref={audioRef} autoPlay playsInline />
+      )}
+
+      {/* Bouton pour activer l'audio si bloqué */}
+      {audioBlocked && !isLocal && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <button
+            onClick={enableAudio}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+          >
+            🔊 Activer l'audio
+          </button>
+        </div>
+      )}
+
+      <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-white text-xs sm:text-sm">
+        {displayName || 'Participant'}
+        {!micOn && ' 🔇'}
+      </div>
+    </div>
+  );
+}
+
+function ChatPanel({ sessionId, userId }: { sessionId: string; userId: number }) {
+  const [messages, setMessages] = useState<Array<{ userId: number; userName: string; message: string; timestamp: Date }>>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socket = useSocket();
+
+  // Charger l'historique des messages au chargement
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${BACKEND_URL}/api/video/chat-history/${sessionId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.messages)) {
+            setMessages(data.messages.map((m: any) => ({
+              userId: m.userId,
+              userName: m.userName,
+              message: m.message,
+              timestamp: new Date(m.timestamp)
+            })));
+          }
+        }
+      } catch (err) {
+        console.error('Erreur chargement historique chat:', err);
+      }
+    };
+
+    loadChatHistory();
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onMessage = (data: any) => {
+      setMessages(prev => [...prev, {
+        userId: data.userId,
+        userName: data.userName,
+        message: data.message,
+        timestamp: new Date(data.timestamp)
+      }]);
+    };
+
+    socket.on('session:message', onMessage);
+    return () => {
+      socket.off('session:message', onMessage);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = () => {
+    if (!newMessage.trim() || !socket) return;
+
+    socket.emit('session:sendMessage', {
+      sessionId,
+      message: newMessage.trim()
+    });
+
+    setNewMessage('');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-gray-800">
+      <div className="p-3 border-b border-gray-700">
+        <h3 className="text-white font-semibold">💬 Messages</h3>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`flex flex-col ${msg.userId === userId ? 'items-end' : 'items-start'}`}>
+            <div className={`max-w-[80%] rounded-lg p-2 ${msg.userId === userId ? 'bg-blue-600' : 'bg-gray-700'}`}>
+              <p className="text-xs text-gray-300 mb-1">{msg.userName}</p>
+              <p className="text-white text-sm">{msg.message}</p>
+            </div>
+            <span className="text-xs text-gray-500 mt-1">
+              {msg.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="p-3 border-t border-gray-700">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Tapez un message..."
+            className="flex-1 bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!newMessage.trim()}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+          >
+            📤
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MeetingView({ sessionId, onMeetingReady, onMeetingEnded, userId, setBothPresent }: any) {
+  const { join, leave, toggleMic, toggleWebcam, participants, localParticipant } = useMeeting({
+    onMeetingJoined: onMeetingReady,
+    onMeetingLeft: onMeetingEnded,
+  });
+
+  const participantIds = [...participants.keys()];
+
+  // Update bothPresent based on VideoSDK participants count
+  useEffect(() => {
+    const count = participantIds.length;
+    console.log(`👥 Nombre de participants VideoSDK: ${count}`);
+    setBothPresent(count >= 2);
+  }, [participantIds.length, setBothPresent]);
+
+  useEffect(() => {
+    join();
+    return () => {
+      leave();
+    };
+  }, []);
+
+  return (
+    <div className="h-[calc(100vh-80px)] bg-gray-900 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col p-2 sm:p-4 min-h-0 overflow-hidden">
+        <div className={`grid gap-2 sm:gap-3 flex-1 ${
+          participantIds.length === 1
+            ? 'grid-cols-1'
+            : participantIds.length === 2
+            ? 'grid-cols-1 sm:grid-cols-2'
+            : participantIds.length === 3
+            ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+            : 'grid-cols-1 sm:grid-cols-2'
+        } overflow-hidden`}>
+          {participantIds.slice(0, 4).map((participantId) => (
+            <div key={participantId} className="min-h-0 overflow-hidden">
+              <ParticipantView participantId={participantId} />
+            </div>
+          ))}
+        </div>
+
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 lg:left-[calc(50%-10rem)] transform -translate-x-1/2 flex gap-2 sm:gap-3 z-10">
+          <button
+            onClick={() => toggleMic()}
+            className="bg-blue-600 hover:bg-blue-700 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg flex items-center justify-center text-xl sm:text-2xl"
+          >
+            🎤
+          </button>
+          <button
+            onClick={() => toggleWebcam()}
+            className="bg-blue-600 hover:bg-blue-700 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg flex items-center justify-center text-xl sm:text-2xl"
+          >
+            📹
+          </button>
+        </div>
+      </div>
+
+      <div className="w-full lg:w-80 h-64 lg:h-auto border-t lg:border-t-0 lg:border-l border-gray-700 flex-shrink-0">
+        <ChatPanel sessionId={sessionId} userId={userId} />
+      </div>
+    </div>
+  );
+}
+
+export default function VideoSDKSession({ sessionId }: VideoSessionProps) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const socket = useSocket();
+  const [meetingId, setMeetingId] = useState<string>("");
+  const [token, setToken] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [perMinute, setPerMinute] = useState<number>(0);
+  const [seconds, setSeconds] = useState<number>(0);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [bothPresent, setBothPresent] = useState<boolean>(false);
+  const [meetingReady, setMeetingReady] = useState(false);
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      const next = encodeURIComponent(`/video-session/${sessionId}`);
+      router.push(`/signin?next=${next}`);
+      return;
+    }
+    createVideoSDKRoom();
+    return () => {
+      stopRecording();
+      stopMeter();
+    };
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!meetingId || !meetingReady) return;
+    (async () => {
+      await startMeter();
+      startRecordingWithRetry();
+    })();
+  }, [meetingId, meetingReady]);
+
+  useEffect(() => {
+    if (!socket || !user) return;
+    try {
+      socket.emit('joinSession', { sessionId, userId: user.id, role: user.userType });
+      const onPeers = (payload: any) => {
+        try {
+          const peers = Array.isArray(payload?.peers) ? payload.peers : [];
+          console.log(`👥 Participants dans la session: ${peers.length}`);
+          setBothPresent(peers.length >= 2);
+        } catch {}
+      };
+      const onJoined = (data: any) => {
+        console.log('✅ Participant rejoint la session');
+        // Vérifier le nombre total de participants via socket
+        socket.emit('session:getPeers', { sessionId });
+      };
+      const onLeft = (data: any) => {
+        console.log('❌ Participant a quitté la session');
+        // Vérifier le nombre total de participants via socket
+        socket.emit('session:getPeers', { sessionId });
+      };
+      const onEnded = () => {
+        stopRecording();
+        stopMeter();
+        router.push('/dashboard');
+      };
+      socket.on('session:peers', onPeers);
+      socket.on('session:participant-joined', onJoined);
+      socket.on('session:participant-left', onLeft);
+      socket.on('session:ended', onEnded);
+      return () => {
+        socket.off('session:peers', onPeers);
+        socket.off('session:participant-joined', onJoined);
+        socket.off('session:participant-left', onLeft);
+        socket.off('session:ended', onEnded);
+      };
+    } catch {}
+  }, [socket, user, sessionId]);
+
+  useEffect(() => {
+    if (!meetingId) return;
+    const iv = setInterval(async () => {
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+        const resp = await fetch(`${BACKEND_URL}/api/video/meter/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ sessionId })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.success && typeof data.elapsedSec === 'number') {
+            setSeconds(data.elapsedSec);
+            if (data.perMinute) setPerMinute(data.perMinute);
+          }
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [meetingId, sessionId]);
+
+  useEffect(() => {
+    if (!meetingId) return;
+    (async () => {
+      if (bothPresent && !isRecording) {
+        console.log('🎬 Démarrage de l\'enregistrement automatique (2+ participants)');
+        const success = await startRecordingWithRetry();
+        if (success) {
+          setIsRecording(true);
+          console.log('✅ Enregistrement démarré avec succès');
+        } else {
+          console.log('❌ Échec du démarrage de l\'enregistrement');
+        }
+      }
+      if (!bothPresent && isRecording) {
+        console.log('⏸️ Arrêt de l\'enregistrement (moins de 2 participants)');
+        await stopRecording();
+        setIsRecording(false);
+      }
+    })();
+  }, [bothPresent, meetingId]);
+
+  const createVideoSDKRoom = async () => {
+    try {
+      console.log('🎥 Création room VideoSDK pour session:', sessionId);
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
+      const response = await fetch(`${BACKEND_URL}/api/video/create-room`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          sessionId
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.roomId && data.token) {
+          console.log('🔗 Room créée:', data.roomId);
+          setMeetingId(data.roomId);
+          setToken(data.token);
+        } else {
+          throw new Error('Erreur lors de la création de la room');
+        }
+      } else {
+        if (response.status === 401 || response.status === 403) {
+          const next = encodeURIComponent(`/video-session/${sessionId}`);
+          router.push(`/signin?next=${next}`);
+          return;
+        }
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Erreur création room:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const endCall = () => {
+    try { socket?.emit('session:end', { sessionId }); } catch {}
+    stopRecording();
+    stopMeter();
+    setTimeout(() => router.push('/dashboard'), 50);
+  };
+
+  const startMeter = async () => {
+    try {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const resp = await fetch(`${BACKEND_URL}/api/video/meter/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success) {
+          setPerMinute(data.perMinute || 0);
+          if (typeof data.elapsedSec === 'number') setSeconds(data.elapsedSec);
+        }
+      }
+    } catch {}
+  };
+
+  const stopMeter = async () => {
+    try {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      await fetch(`${BACKEND_URL}/api/video/meter/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId })
+      });
+    } catch {}
+  };
+
+  const startRecordingWithRetry = async (): Promise<boolean> => {
+    const maxTries = 8;
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    for (let i = 0; i < maxTries; i++) {
+      console.log(`📹 Tentative d'enregistrement ${i + 1}/${maxTries}`);
+      const ok = await startRecording();
+      if (ok) return true;
+      if (i < maxTries - 1) {
+        await delay(3000);
+      }
+    }
+    console.log('❌ Échec de l\'enregistrement après toutes les tentatives');
+    return false;
+  };
+
+  const startRecording = async (): Promise<boolean> => {
+    try {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const resp = await fetch(`${BACKEND_URL}/api/video/recordings/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId, roomId: meetingId })
+      });
+      if (resp.ok) {
+        console.log('✅ Enregistrement démarré avec succès');
+        return true;
+      } else {
+        const errorData = await resp.json().catch(() => ({}));
+        // Si l'enregistrement est déjà démarré, considérer comme succès
+        if (errorData?.info?.raw === 'Recording already started!') {
+          console.log('ℹ️ Enregistrement déjà en cours');
+          return true;
+        }
+        // Si limite atteinte, ne pas considérer comme erreur bloquante
+        if (errorData?.info?.raw?.includes('max recording limit')) {
+          console.log('⚠️ Limite d\'enregistrement atteinte sur le compte VideoSDK');
+          return true; // Ne pas bloquer la session
+        }
+        console.log('❌ Erreur enregistrement:', resp.status, errorData);
+        return false;
+      }
+    } catch (err) {
+      console.log('❌ Erreur lors de l\'appel API d\'enregistrement:', err);
+      return false;
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      await fetch(`${BACKEND_URL}/api/video/recordings/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId, roomId: meetingId })
+      });
+      setIsRecording(false);
+    } catch {}
+  };
+
+  if (isLoading || !meetingId || !token) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-xl">Préparation de la session vidéo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <VideoControls
+        sessionId={sessionId}
+        seconds={seconds}
+        perMinute={perMinute}
+        onEndCall={endCall}
+        isRecording={isRecording}
+        bothPresent={bothPresent}
+      />
+
+      <MeetingProvider
+        config={{
+          meetingId: meetingId,
+          micEnabled: true,
+          webcamEnabled: true,
+          name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User',
+          debugMode: false,
+        }}
+        token={token}
+      >
+        <MeetingView
+          sessionId={sessionId}
+          userId={user?.id}
+          onMeetingReady={() => setMeetingReady(true)}
+          onMeetingEnded={endCall}
+          setBothPresent={setBothPresent}
+        />
+      </MeetingProvider>
+    </div>
+  );
+}

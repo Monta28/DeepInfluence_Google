@@ -1,0 +1,366 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
+
+interface VideoSessionProps {
+  sessionId: string;
+}
+
+export default function DailyVideoSession({ sessionId }: VideoSessionProps) {
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const router = useRouter();
+  const { user } = useAuth();
+  const socket = useSocket();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [roomUrl, setRoomUrl] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [perMinute, setPerMinute] = useState<number>(0);
+  const [seconds, setSeconds] = useState<number>(0);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [bothPresent, setBothPresent] = useState<boolean>(false);
+  const [showRecordings, setShowRecordings] = useState<boolean>(false);
+  const [recordings, setRecordings] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Pré‑check d'authentification: vérifier /api/auth/me avant de créer la room Daily
+    (async () => {
+      try {
+        const raw = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (!raw) {
+          const next = encodeURIComponent(`/video-session/${sessionId}`);
+          router.push(`/signin?next=${next}`);
+          return;
+        }
+        const authResp = await fetch(`/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${raw}` },
+          cache: 'no-store'
+        });
+        if (!authResp.ok) {
+          try { const info = await authResp.json(); console.log('Auth precheck failed:', info); } catch {}
+          localStorage.removeItem('token');
+          const next = encodeURIComponent(`/video-session/${sessionId}`);
+          router.push(`/signin?next=${next}`);
+          return;
+        }
+        createDailyRoom();
+      } catch (e) {
+        console.log('Auth precheck error:', e);
+        const next = encodeURIComponent(`/video-session/${sessionId}`);
+        router.push(`/signin?next=${next}`);
+      }
+    })();
+    return () => {
+      stopRecording();
+      stopMeter();
+    };
+  }, [sessionId]);
+
+  // Start metering + recording when room URL is ready
+  useEffect(() => {
+    if (!roomUrl) return;
+    (async () => {
+      await startMeter();
+      startRecordingWithRetry();
+    })();
+  }, [roomUrl]);
+
+  // Join session room via socket for real-time presence
+  useEffect(() => {
+    if (!socket || !user) return;
+    try {
+      socket.emit('joinSession', { sessionId, userId: user.id, role: user.userType });
+      const onPeers = (payload: any) => {
+        try { const peers = Array.isArray(payload?.peers) ? payload.peers : []; setBothPresent(peers.length >= 1); } catch {}
+      };
+      const onJoined = () => { setBothPresent(true); };
+      const onLeft = () => { setBothPresent(false); };
+      const onEnded = () => {
+        stopRecording();
+        stopMeter();
+        router.push('/dashboard');
+      };
+      socket.on('session:peers', onPeers);
+      socket.on('session:participant-joined', onJoined);
+      socket.on('session:participant-left', onLeft);
+      socket.on('session:ended', onEnded);
+      return () => {
+        socket.off('session:peers', onPeers);
+        socket.off('session:participant-joined', onJoined);
+        socket.off('session:participant-left', onLeft);
+        socket.off('session:ended', onEnded);
+      };
+    } catch {}
+    // leave is handled by socket disconnect automatically
+  }, [socket, user, sessionId]);
+
+  // Heartbeat every 3s to persist elapsed time server-side and sync UI
+  useEffect(() => {
+    if (!roomUrl) return;
+    const iv = setInterval(async () => {
+      try {
+        const resp = await fetch(`/api/video/meter/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ sessionId })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.success && typeof data.elapsedSec === 'number') {
+            setSeconds(data.elapsedSec);
+            if (data.perMinute) setPerMinute(data.perMinute);
+          }
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [roomUrl, sessionId]);
+
+  // Auto start/stop recording based on presence
+  useEffect(() => {
+    if (!roomUrl) return;
+    (async () => {
+      if (bothPresent && !isRecording) {
+        await startRecordingWithRetry();
+        setIsRecording(true);
+      }
+      if (!bothPresent && isRecording) {
+        await stopRecording();
+        setIsRecording(false);
+      }
+    })();
+  }, [bothPresent, roomUrl]);
+
+  const createDailyRoom = async () => {
+    try {
+      console.log('🎥 Création room Daily.co pour session:', sessionId);
+
+      // Appeler l'API backend pour créer la room Daily.co
+      const response = await fetch(`/api/video/create-room`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          sessionId
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.roomUrl) {
+          console.log('🔗 Room créée:', data.roomUrl);
+          setRoomUrl(data.roomUrl);
+        } else {
+          throw new Error('Erreur lors de la création de la room');
+        }
+      } else {
+        // 401/403 => session non authentifiée: rediriger vers login
+        if (response.status === 401 || response.status === 403) {
+          const next = encodeURIComponent(`/video-session/${sessionId}`);
+          router.push(`/signin?next=${next}`);
+          return;
+        }
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Erreur création room:', error);
+      // Fallback de secours aligné avec le backend (si une room existe déjà)
+      const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User';
+      const fallbackUrl = `https://deepinfluence.daily.co/deepinfluence-${sessionId}?user_name=${encodeURIComponent(fullName)}`;
+      setRoomUrl(fallbackUrl);
+      setIsLoading(false);
+    }
+  };
+
+  const endCall = () => {
+    try { socket?.emit('session:end', { sessionId }); } catch {}
+    stopRecording();
+    stopMeter();
+    setTimeout(() => router.push('/dashboard'), 50);
+  };
+
+  // UI seconds are driven by server heartbeat
+
+  const startMeter = async () => {
+    try {
+      const resp = await fetch(`/api/video/meter/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success) {
+          setPerMinute(data.perMinute || 0);
+          if (typeof data.elapsedSec === 'number') setSeconds(data.elapsedSec);
+        }
+      }
+    } catch {}
+  };
+
+  const stopMeter = async () => {
+    try {
+      await fetch(`/api/video/meter/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId })
+      });
+    } catch {}
+  };
+
+  const startRecordingWithRetry = async () => {
+    const maxTries = 8;
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    for (let i = 0; i < maxTries; i++) {
+      const ok = await startRecording();
+      if (ok) return;
+      await delay(3000);
+    }
+  };
+
+  const startRecording = async (): Promise<boolean> => {
+    try {
+      const resp = await fetch(`/api/video/recordings/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId })
+      });
+      if (resp.ok) setIsRecording(true);
+      return resp.ok;
+    } catch { return false; }
+  };
+
+  const stopRecording = async () => {
+    try {
+      await fetch(`/api/video/recordings/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ sessionId })
+      });
+      setIsRecording(false);
+    } catch {}
+  };
+
+  const openRecordings = async () => {
+    try {
+      const resp = await fetch(`/api/video/recordings/list?sessionId=${encodeURIComponent(sessionId)}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setRecordings(Array.isArray(data?.recordings) ? data.recordings : []);
+      } else {
+        setRecordings([]);
+      }
+    } catch { setRecordings([]); }
+    setShowRecordings(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-xl">Préparation de la session vidéo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900">
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-6">
+            <h1 className="text-xl font-bold text-white">Session Vidéo - {sessionId}</h1>
+            <div className="text-sm text-gray-300">
+              <span>Temps: {Math.floor(seconds/60).toString().padStart(2,'0')}:{(seconds%60).toString().padStart(2,'0')}</span>
+              {perMinute > 0 && (
+                <span className="ml-4">Coût: {Math.ceil(seconds/60) * perMinute} coins</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* {!isRecording ? (
+              <button
+                onClick={() => startRecordingWithRetry()}
+                className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-white"
+              >
+                Démarrer l'enregistrement
+              </button>
+            ) : (
+              <button
+                onClick={stopRecording}
+                className="bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded text-white"
+              >
+                Arrêter l'enregistrement
+              </button>
+            )} */}
+            {/* <button
+              onClick={openRecordings}
+              className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-white"
+            >
+              Enregistrements
+            </button> */}
+          <button
+            onClick={endCall}
+            disabled={seconds < 60}
+            className={`px-4 py-2 rounded text-white ${seconds < 60 ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+          >
+            Terminer la session {seconds < 60 ? '(min 10 min)' : ''}
+          </button>
+          </div>
+        </div>
+      </div>
+      
+
+      {/* Video Frame */}
+      <div className="h-[calc(100vh-80px)]">
+        <iframe
+          ref={iframeRef}
+          src={roomUrl}
+          width="100%"
+          height="100%"
+          frameBorder="0"
+          allow="camera; microphone; fullscreen; speaker; display-capture"
+          className="w-full h-full"
+        />
+      </div>
+      {showRecordings && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-gray-900 text-gray-100 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <div className="font-semibold">Enregistrements Daily</div>
+              <button onClick={() => setShowRecordings(false)} className="text-gray-300 hover:text-white">✕</button>
+            </div>
+            <div className="p-4 space-y-3">
+              {recordings.length === 0 && <div className="text-sm text-gray-400">Aucun enregistrement trouvé.</div>}
+              {recordings.map((r, i) => {
+                const dl = r.download_link || r.share_link || r.url || (r.links && (r.links.download || r.links.share));
+                return (
+                  <div key={i} className="bg-gray-800 rounded p-3">
+                    <div className="text-sm">ID: {r.id || r.asset_id || '—'}</div>
+                    <div className="text-sm">Salle: {r.room_name || r.room || '—'}</div>
+                    <div className="text-sm">Durée: {r.duration || r.duration_sec || '—'} sec</div>
+                    {dl ? (
+                      <a href={dl} target="_blank" rel="noreferrer" className="inline-block mt-2 text-blue-400 hover:text-blue-300">Télécharger / Ouvrir</a>
+                    ) : (
+                      <pre className="text-xs text-gray-300 overflow-auto mt-2">{JSON.stringify(r, null, 2)}</pre>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

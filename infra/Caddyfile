@@ -1,0 +1,20 @@
+https://10.238.95.221:8443 {
+  # TLS avec certificats locaux placés à la racine du repo dans ./certs
+  # Assurez-vous d'exécuter la commande Caddy depuis la racine du projet
+  tls ./certs/10.238.95.221.pem ./certs/10.238.95.221-key.pem
+
+  encode gzip
+
+  # Backend API and Socket.IO
+  @api path /api/*
+  reverse_proxy @api http://localhost:3001
+
+  @socket path /socket.io*
+  reverse_proxy @socket http://localhost:3001
+
+  @health path /health
+  reverse_proxy @health http://localhost:3001
+
+  # Frontend Next.js dev server
+  reverse_proxy http://localhost:3000
+}

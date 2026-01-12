@@ -1,0 +1,419 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int      @id @default(autoincrement())
+  firstName          String
+  lastName           String
+  email              String   @unique
+  password           String?
+  phone              String?
+  bio                String?
+  location           String?
+  avatar             String?  // <-- Champ principal pour toutes les images de profil
+  userType           String   @default("user")
+  banned             Boolean  @default(false)
+  joinDate           DateTime @default(now())
+  isVerified         Boolean  @default(false)
+  coins              Int      @default(100)
+  profileCompleted   Boolean  @default(false)
+  googleId           String?  @unique
+  facebookId         String?  @unique
+  sessionsCompleted  Int      @default(0)
+  formationsFollowed Int      @default(0)
+  learningHours      Int      @default(0)
+  expertsFollowed    Int      @default(0)
+  expert             Expert?
+  appointments       Appointment[]
+  sentMessages       Message[]     @relation("SentMessages")
+  receivedMessages   Message[]     @relation("ReceivedMessages")
+  conversations      ConversationParticipant[]
+  formationEnrollments UserFormation[]
+  videoHistory       UserVideo[]
+  favoriteVideos     FavoriteVideo[]
+  reviews            Review[]
+  notifications      Notification[]
+  transactions       Transaction[]
+  favoriteExperts    FavoriteExpert[]
+  favoriteFormations FavoriteFormation[]
+  followingExperts   ExpertFollow[]
+  auditLogs          AuditLog[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@map("users")
+}
+
+model Expert {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique
+  name              String
+  nameNormalized    String?
+  specialty         String
+  specialtyNormalized String?
+  rating            Float    @default(0)
+  reviews           Int      @default(0)
+  hourlyRate        Int
+  pricePerMessage   Int
+  // Le champ 'image' est SUPPRIMÉ d'ici
+  isOnline          Boolean  @default(false)
+  nextAvailable     String?
+  tags              String
+  verified          Boolean  @default(false)
+  category          String
+  languages         String
+  responseTime      String?
+  sessions          Int      @default(0)
+  followers         Int      @default(0)
+  description       String?
+  verificationStatus String   @default("NOT_SUBMITTED")
+  identityDocumentType String? 
+  identityDocumentFront String? 
+  identityDocumentBack  String? 
+  selfieWithIdentity    String? 
+  bankDetails           String? 
+  bankDocument          String?
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments      Appointment[]
+  formations        Formation[]
+  videos            Video[]
+  favoredBy         FavoriteExpert[]
+  followedBy        ExpertFollow[]
+  receivedReviews   Review[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@map("experts")
+}
+
+model Formation {
+  id             Int      @id @default(autoincrement())
+  title          String
+  titleNormalized String?
+  instructorId   Int
+  instructor     String
+  instructorNormalized String?
+  duration       String
+  level          String   // 'Débutant' | 'Intermédiaire' | 'Avancé'
+  rating         Float    @default(0)
+  students       Int      @default(0)
+  price          Int
+  type           String   // 'live' | 'presentiel'
+  maxPlaces      Int
+  currentPlaces  Int      @default(0)
+  location       String
+  image          String?
+  tags           String   // JSON array as string
+  nextSession    String?
+  description    String
+  descriptionNormalized String?
+  schedule       String?
+  modules        String?  // JSON array as string
+  category       String
+  objectives     String?  // JSON array as string
+  prerequisites  String?  // JSON array as string
+  included       String?  // JSON array as string
+  tools          String?  // JSON array as string
+  
+  // Relations
+  expert         Expert @relation(fields: [instructorId], references: [id])
+  enrollments    UserFormation[]
+  appointments   Appointment[]
+  reviews        Review[]
+  favoredBy      FavoriteFormation[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("formations")
+}
+
+model Video {
+  id          Int      @id @default(autoincrement())
+  title       String
+  titleNormalized String?
+  expertId    Int
+  expert      String
+  expertNormalized String?
+  duration    String
+  views       Int      @default(0)
+  likes       Int      @default(0)
+  category    String
+  type        String   // 'free' | 'premium'
+  price       Int      @default(0)
+  thumbnail   String?
+  expertImage String?
+  publishedAt DateTime @default(now())
+  description String
+  videoUrl    String?
+  
+  // Relations
+  expertRel   Expert @relation(fields: [expertId], references: [id])
+  userHistory UserVideo[]
+  favoredBy   FavoriteVideo[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("videos")
+}
+
+model Appointment {
+  id                   Int      @id @default(autoincrement())
+  userId               Int
+  expertId             Int
+  expert               String
+  type                 String
+  date                 String
+  time                 String
+  duration             String
+  price                Int
+  coins                Int
+  status               String   // 'confirmed' | 'completed' | 'cancelled'
+  category             String
+  joinLink             String?
+  canJoin              Boolean  @default(false)
+  formationId          Int?
+  rating               Int?
+  review               String?
+  certificateAvailable Boolean  @default(false)
+  image                String?
+  
+  // Relations
+  user                 User      @relation(fields: [userId], references: [id])
+  expertRel            Expert    @relation(fields: [expertId], references: [id])
+  formation            Formation? @relation(fields: [formationId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("appointments")
+
+}
+
+model Conversation {
+  id              Int      @id @default(autoincrement())
+  lastMessage     String?
+  lastMessageTime DateTime?
+  
+  // Relations
+  participants    ConversationParticipant[]
+  messages        Message[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  isFree          Boolean  @default(false)
+  
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             Int @id @default(autoincrement())
+  conversationId Int
+  userId         Int
+  unreadCount    Int @default(0)
+  
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             Int      @id @default(autoincrement())
+  conversationId Int
+  senderId       Int
+  receiverId     Int
+  content        String
+  timestamp      DateTime @default(now())
+  isRead         Boolean  @default(false)
+  
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  
+  createdAt DateTime @default(now())
+  
+  @@map("messages")
+}
+
+model UserFormation {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  formationId       Int
+  enrolledAt        DateTime @default(now())
+  progress          Int      @default(0)
+  completed         Boolean  @default(false)
+  certificateIssued Boolean  @default(false)
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  formation         Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, formationId])
+  @@map("user_formations")
+}
+
+model UserVideo {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  videoId   Int
+  watchedAt DateTime @default(now())
+  watchTime Int      @default(0) // en secondes
+  completed Boolean  @default(false)
+  liked     Boolean  @default(false)
+  
+  // Relations
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, videoId])
+  @@map("user_videos")
+}
+
+model Review {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  expertId      Int?
+  appointmentId Int?
+  formationId   Int?
+  rating        Int
+  comment       String
+  
+  // Relations
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expert        Expert?    @relation(fields: [expertId], references: [id], onDelete: Cascade)
+  formation     Formation? @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("reviews")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  actionUrl String?
+  
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("notifications")
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  type        String   // 'purchase' | 'spend' | 'refund'
+  amount      Int      // montant en euros (centimes)
+  coins       Int      // nombre de coins
+  description String
+  relatedId   Int?     // ID de l'appointment, formation, etc.
+  
+  // Relations
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("transactions")
+}
+
+model FavoriteExpert {
+  id        Int   @id @default(autoincrement())
+  userId    Int
+  expertId  Int
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expert    Expert @relation(fields: [expertId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([userId, expertId])
+  @@map("favorite_experts")
+}
+
+model FavoriteFormation {
+  id          Int   @id @default(autoincrement())
+  userId      Int
+  formationId Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  @@unique([userId, formationId])
+  @@map("favorite_formations")
+}
+
+model FavoriteVideo {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  videoId   Int
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([userId, videoId])
+  @@map("favorite_videos")
+}
+
+model ExpertFollow {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  expertId  Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expert    Expert   @relation(fields: [expertId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, expertId])
+  @@map("expert_follows")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  adminId    Int
+  action     String
+  targetType String
+  targetId   Int?
+  details    String?
+
+  admin      User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model SessionMessage {
+  id             Int      @id @default(autoincrement())
+  sessionId      String
+  userId         Int
+  userName       String
+  message        String
+  timestamp      DateTime @default(now())
+
+  @@index([sessionId])
+  @@map("session_messages")
+}
+
+model VideoRoom {
+  id              Int      @id @default(autoincrement())
+  sessionId       String   @unique
+  appointmentId   Int
+  videoSDKRoomId  String   @unique
+  createdAt       DateTime @default(now())
+
+  @@index([appointmentId])
+  @@index([videoSDKRoomId])
+  @@map("video_rooms")
+}

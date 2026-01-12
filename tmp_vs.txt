@@ -1,0 +1,612 @@
+const express = require('express');
+const { verifyToken } = require('../middleware/auth');
+const prisma = require('../services/database');
+const jwt = require('jsonwebtoken');
+
+const router = express.Router();
+
+// Générer un token VideoSDK JWT
+function generateVideoSDKToken() {
+  const apiKey = process.env.VIDEOSDK_API_KEY || '';
+  const secretKey = process.env.VIDEOSDK_SECRET_KEY || '';
+
+  if (!apiKey || !secretKey) {
+    throw new Error('VIDEOSDK_API_KEY et VIDEOSDK_SECRET_KEY doivent être configurés');
+  }
+
+  const options = {
+    expiresIn: '120m',
+    algorithm: 'HS256'
+  };
+
+  const payload = {
+    apikey: apiKey,
+    // Permissions per VideoSDK docs: allow_join (join), allow_mod (moderator), allow_recording (cloud recording)
+    permissions: ['allow_join', 'allow_mod', 'allow_recording'],
+    iat: Math.floor(Date.now() / 1000),
+    version: 2
+  };
+
+  return jwt.sign(payload, secretKey, options);
+}
+
+/**
+ * @route POST /api/video/create-room
+ * @desc Créer une room VideoSDK.live pour session vidéo
+ * @access Private
+ */
+router.post('/create-room', verifyToken, async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    const displayName = `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || 'User';
+    console.log(`📹 Demande création room: sessionId=${sessionId}, userId=${req.user?.id}, displayName=${displayName}`);
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'sessionId requis'
+      });
+    }
+
+    // Générer le token JWT VideoSDK
+    const videoSDKToken = generateVideoSDKToken();
+
+    // Créer une room VideoSDK
+    const roomName = `deepinfluence-${sessionId}`;
+    const videoSDKResponse = await fetch('https://api.videosdk.live/v2/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${videoSDKToken}`
+      },
+      body: JSON.stringify({
+        customRoomId: roomName,
+        region: 'sg001', // Singapore region, change as needed
+      })
+    });
+
+    if (videoSDKResponse.ok) {
+      const roomData = await videoSDKResponse.json();
+      console.log(`📹 Room VideoSDK créée: ${roomName}, roomId: ${roomData.roomId}`);
+
+      // Sauvegarder la correspondance session -> videoSDKRoomId
+      const appointmentId = parseInt(sessionId.replace('session-', ''), 10);
+      if (Number.isFinite(appointmentId)) {
+        try {
+          await prisma.videoRoom.upsert({
+            where: { sessionId },
+            update: { videoSDKRoomId: roomData.roomId },
+            create: {
+              sessionId,
+              appointmentId,
+              videoSDKRoomId: roomData.roomId
+            }
+          });
+          console.log(`✅ Correspondance sauvegardée: ${sessionId} -> ${roomData.roomId}`);
+        } catch (dbErr) {
+          console.log('⚠️ Erreur sauvegarde correspondance room:', dbErr?.message);
+        }
+      }
+
+      res.json({
+        success: true,
+        roomId: roomData.roomId,
+        token: videoSDKToken,
+        roomName: roomName
+      });
+    } else {
+      const errorData = await videoSDKResponse.text();
+      console.error('⚠️ Erreur création room VideoSDK:', errorData);
+
+      return res.status(videoSDKResponse.status).json({
+        success: false,
+        message: 'Erreur lors de la création de la room VideoSDK',
+        error: errorData
+      });
+    }
+
+  } catch (error) {
+    console.error('Erreur création room VideoSDK:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création de la room',
+      error: error.message
+    });
+  }
+});
+
+// Utility: safe JSON parse
+function safeJson(text) {
+  try { return JSON.parse(text); } catch { return { raw: text }; }
+}
+
+// Start VideoSDK recording
+router.post('/recordings/start', verifyToken, async (req, res) => {
+  try {
+    const { sessionId, roomId } = req.body || {};
+    if (!sessionId || !roomId) {
+      console.log('❌ Enregistrement: paramètres manquants', { sessionId, roomId });
+      return res.status(400).json({ success: false, message: 'sessionId et roomId requis' });
+    }
+
+    console.log(`🎬 Tentative d'enregistrement pour session ${sessionId}, room ${roomId}`);
+
+    const videoSDKToken = generateVideoSDKToken();
+    const url = `https://api.videosdk.live/v2/recordings/start`;
+    const requestBody = {
+      roomId: roomId,
+      config: {
+        layout: {
+          type: 'GRID',
+          priority: 'SPEAKER',
+          gridSize: 4
+        },
+        theme: 'LIGHT', // Options: 'DARK' ou 'LIGHT'
+        mode: 'video-and-audio',
+        quality: 'high',
+        orientation: 'landscape'
+      }
+    };
+
+    console.log(`📤 Envoi requête VideoSDK:`, JSON.stringify(requestBody, null, 2));
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${videoSDKToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    const text = await resp.text();
+    if (!resp.ok) {
+      console.log(`❌ VideoSDK API erreur ${resp.status}:`, safeJson(text));
+      console.log(`❌ RoomId utilisé: ${roomId}`);
+      return res.status(resp.status).json({ success: false, info: safeJson(text), roomId });
+    }
+    console.log(`✅ Enregistrement démarré avec succès pour session ${sessionId}`);
+    return res.json({ success: true, data: safeJson(text) });
+  } catch (e) {
+    console.error('❌ Erreur start recording:', e);
+    return res.status(500).json({ success: false, message: 'Recording start error', error: e?.message || String(e) });
+  }
+});
+
+// Stop VideoSDK recording
+router.post('/recordings/stop', verifyToken, async (req, res) => {
+  try {
+    const { sessionId, roomId } = req.body || {};
+    if (!sessionId || !roomId) return res.status(400).json({ success: false, message: 'sessionId et roomId requis' });
+
+    const videoSDKToken = generateVideoSDKToken();
+    const url = `https://api.videosdk.live/v2/recordings/stop`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${videoSDKToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        roomId: roomId
+      })
+    });
+    const text = await resp.text();
+    if (!resp.ok) return res.status(resp.status).json({ success: false, info: safeJson(text) });
+    return res.json({ success: true, data: safeJson(text) });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Recording stop error', error: e?.message || String(e) });
+  }
+});
+
+// List VideoSDK recordings (optionally filtered by sessionId)
+router.get('/recordings/list', verifyToken, async (req, res) => {
+  try {
+    const { sessionId, roomId } = req.query || {};
+    let url = `https://api.videosdk.live/v2/recordings`;
+
+    if (roomId) {
+      url += `?roomId=${encodeURIComponent(roomId)}`;
+    }
+
+    const videoSDKToken = generateVideoSDKToken();
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${videoSDKToken}` }
+    });
+    const data = await resp.json().catch(() => ({ data: [] }));
+    let items = Array.isArray(data?.data) ? data.data : [];
+
+    if (sessionId && !roomId) {
+      const tag = `deepinfluence-${sessionId}`;
+      items = items.filter((r) => {
+        const room = (r?.roomId || r?.room || '').toString();
+        return room.includes(tag);
+      });
+    }
+    return res.json({ success: true, total: items.length, recordings: items });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Erreur list recordings', error: e?.message || String(e) });
+  }
+});
+
+// List recordings visible to current user (as user or expert)
+router.get('/recordings/my', verifyToken, async (req, res) => {
+  try {
+    const as = (req.query?.as || '').toString(); // 'expert' | 'user' | ''
+    const filterSession = (req.query?.sessionId || '').toString();
+    console.log(`📹 Requête /recordings/my - userId: ${req.user.id}, as: ${as}, filterSession: ${filterSession}`);
+
+    const videoSDKToken = generateVideoSDKToken();
+    const allUrl = `https://api.videosdk.live/v2/recordings`;
+    const resp = await fetch(allUrl, { method: 'GET', headers: { 'Authorization': `Bearer ${videoSDKToken}` } });
+    if (!resp.ok) {
+      const info = await resp.text();
+      console.log(`❌ VideoSDK API erreur ${resp.status}:`, info);
+      return res.status(resp.status).json({ success: false, info: safeJson(info) });
+    }
+    const payload = await resp.json();
+    let items = Array.isArray(payload?.data) ? payload.data : [];
+    console.log(`📊 Total enregistrements VideoSDK: ${items.length}`);
+    if (items.length > 0) {
+      console.log(`📝 Premier enregistrement (structure):`, JSON.stringify(items[0], null, 2));
+    }
+
+    // Méthode 1 : Récupérer les correspondances depuis la DB
+    const videoRooms = await prisma.videoRoom.findMany();
+    const roomIdToApptId = new Map(videoRooms.map(vr => [vr.videoSDKRoomId, vr.appointmentId]));
+    console.log(`📊 Correspondances rooms en DB: ${roomIdToApptId.size}`);
+
+    // Méthode 2 : Fallback dynamique par timestamp pour les enregistrements sans correspondance
+    const allAppointments = await prisma.appointment.findMany({
+      where: {
+        date: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] } // 30 derniers jours
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    console.log(`📊 Appointments des 30 derniers jours: ${allAppointments.length}`);
+
+    // Associer chaque enregistrement à son appointmentId
+    const pairs = items.map((it) => {
+      const videoSDKRoomId = it?.roomId || '';
+
+      // Essayer d'abord la correspondance en DB
+      let apptId = roomIdToApptId.get(videoSDKRoomId);
+
+      // Si pas trouvé, essayer de matcher par date/heure
+      if (!apptId) {
+        const recordingStart = new Date(it.start || it.createdAt);
+
+        // Chercher un appointment proche dans le temps (±2 heures)
+        const matchingAppt = allAppointments.find(appt => {
+          const apptDateTime = new Date(`${appt.date}T${appt.time}:00`);
+          const diffMinutes = Math.abs(recordingStart - apptDateTime) / (1000 * 60);
+          return diffMinutes <= 120; // 2 heures de marge
+        });
+
+        if (matchingAppt) {
+          apptId = matchingAppt.id;
+          console.log(`🔗 Correspondance dynamique trouvée: ${videoSDKRoomId} -> appointment ${apptId} (écart: ${Math.abs(recordingStart - new Date(`${matchingAppt.date}T${matchingAppt.time}:00`)) / 60000} min)`);
+
+          // Sauvegarder la correspondance pour la prochaine fois
+          prisma.videoRoom.upsert({
+            where: { videoSDKRoomId },
+            update: { appointmentId: apptId },
+            create: {
+              sessionId: `session-${apptId}`,
+              appointmentId: apptId,
+              videoSDKRoomId
+            }
+          }).catch(err => console.log('⚠️ Erreur sauvegarde correspondance:', err.message));
+        }
+      }
+
+      return { it, apptId: apptId || NaN };
+    }).filter((p) => Number.isFinite(p.apptId) && p.apptId > 0);
+
+    console.log(`📊 Enregistrements avec ID d'appointment valide: ${pairs.length}`);
+    if (pairs.length === 0 && items.length > 0) {
+      console.log(`❌ Aucun enregistrement correspondant. VideoSDK roomIds:`, items.slice(0, 3).map(i => i.roomId));
+      console.log(`❌ Timestamps des enregistrements:`, items.slice(0, 3).map(i => i.start || i.createdAt));
+    }
+
+    const wantedIds = Array.from(new Set(pairs.map((p) => p.apptId)));
+    if (wantedIds.length === 0) {
+      console.log(`❌ Aucun ID d'appointment trouvé dans les enregistrements`);
+      return res.json({ success: true, total: 0, recordings: [] });
+    }
+    const appts = await prisma.appointment.findMany({ where: { id: { in: wantedIds } }, include: { expertRel: { select: { userId: true, name: true } }, user: { select: { id: true, firstName: true, lastName: true } } } });
+    const map = new Map(appts.map((a) => [a.id, a]));
+    let filtered = pairs.filter(({ it, apptId }) => {
+      const a = map.get(apptId);
+      if (!a) return false;
+      const isUser = a.userId === req.user.id;
+      const isExpert = !!a.expertRel && a.expertRel.userId === req.user.id;
+      if (as === 'expert') return isExpert;
+      if (as === 'user') return isUser;
+      return isUser || isExpert;
+    });
+    if (filterSession) {
+      const id = parseInt((filterSession.match(/(\d+)/) || [])[1] || 'NaN', 10);
+      if (Number.isFinite(id)) filtered = filtered.filter((p) => p.apptId === id);
+    }
+    // Enrich with download link
+    const take = Math.min(filtered.length, 25);
+    const enriched = [];
+    for (let i = 0; i < take; i++) {
+      const { it, apptId } = filtered[i];
+      const a = map.get(apptId);
+      let download = it.file?.fileUrl || it.file?.url || it.url || null;
+      let rid = it.id || null;
+
+      enriched.push({
+        id: rid,
+        room: it.roomId || null,
+        createdAt: it.createdAt || it.start || null,
+        durationSec: it.file?.fileDuration || it.duration || null,
+        download: download || (rid ? `/api/video/recordings/proxy-download/${encodeURIComponent(rid)}` : null),
+        appointmentId: apptId,
+        appointment: a ? { id: a.id, date: a.date, time: a.time, userId: a.userId, expertId: a.expertId, expert: a.expert, expertUserId: a.expertRel?.userId || null } : null
+      });
+    }
+    const result = enriched;
+    return res.json({ success: true, total: result.length, recordings: result });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Erreur list my recordings', error: e?.message || String(e) });
+  }
+});
+
+// Proxy download to generate a fresh link when the UI clicks
+router.get('/recordings/proxy-download/:id', verifyToken, async (req, res) => {
+  try {
+    const rid = req.params.id;
+    if (!rid) return res.status(400).send('missing id');
+    const videoSDKToken = generateVideoSDKToken();
+    const r = await fetch(`https://api.videosdk.live/v2/recordings/${encodeURIComponent(rid)}`, { headers: { 'Authorization': `Bearer ${videoSDKToken}` } });
+    if (!r.ok) return res.status(r.status).send('recording not available');
+    const jd = await r.json().catch(() => ({}));
+    const link = jd?.file?.fileUrl || jd?.file?.url || jd?.url || null;
+    if (!link) return res.status(404).send('no link yet');
+    if ((req.query?.json || '') === '1') {
+      return res.json({ success: true, link });
+    }
+    return res.redirect(link);
+  } catch (e) {
+    return res.status(500).send('proxy error');
+  }
+});
+
+function parseAppointmentId(sessionId) {
+  const m = String(sessionId || '').match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : NaN;
+}
+
+// Get chat history for a session
+router.get('/chat-history/:sessionId', verifyToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'sessionId requis' });
+    }
+
+    const messages = await prisma.sessionMessage.findMany({
+      where: { sessionId },
+      orderBy: { timestamp: 'asc' }
+    });
+
+    return res.json({
+      success: true,
+      messages: messages.map(m => ({
+        userId: m.userId,
+        userName: m.userName,
+        message: m.message,
+        timestamp: m.timestamp
+      }))
+    });
+  } catch (e) {
+    console.error('Erreur récupération historique chat:', e);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur récupération historique',
+      error: e?.message || String(e)
+    });
+  }
+});
+
+// Start per-minute coin metering
+router.post('/meter/start', verifyToken, async (req, res) => {
+  try {
+    const { sessionId } = req.body || {};
+    if (!sessionId) return res.status(400).json({ success: false, message: 'sessionId requis' });
+    const apptId = parseAppointmentId(sessionId);
+    if (!apptId) return res.status(400).json({ success: false, message: 'sessionId invalide' });
+
+    const appt = await prisma.appointment.findUnique({
+      where: { id: apptId },
+      include: { expertRel: { select: { id: true, userId: true, hourlyRate: true } } }
+    });
+    if (!appt) {
+      console.log(`❌ Appointment not found: ID ${apptId} from sessionId ${sessionId}`);
+      return res.status(404).json({ success: false, message: `Rendez-vous ${apptId} introuvable. Veuillez utiliser un rendez-vous existant.` });
+    }
+    const isUser = appt.userId === req.user.id;
+    const isExpert = appt.expertRel && appt.expertRel.userId === req.user.id;
+    if (!isUser && !isExpert) return res.status(403).json({ success: false, message: 'Acces refuse' });
+    if (appt.status !== 'confirmed') return res.status(400).json({ success: false, message: 'Rendez-vous non confirme' });
+
+    const perMinute = Math.max(1, Math.ceil(((appt.expertRel && appt.expertRel.hourlyRate) || 0) / 60));
+    // If there is an active state, return it instead of resetting
+    const last = await prisma.transaction.findFirst({ where: { userId: appt.userId, type: 'meter_state', relatedId: appt.id }, orderBy: { createdAt: 'desc' } });
+    if (last) {
+      try {
+        const s = JSON.parse(last.description || '{}');
+        if (s.active && s.sessionId === sessionId) {
+          return res.json({ success: true, perMinute: s.perMinute || perMinute, started: true, elapsedSec: s.elapsedSec || 0 });
+        }
+      } catch {}
+    }
+    const now = new Date();
+    const state = {
+      sessionId,
+      elapsedSec: 0,
+      perMinute,
+      lastHeartbeatUser: isUser ? now.toISOString() : null,
+      lastHeartbeatExpert: isExpert ? now.toISOString() : null,
+      lastTick: now.toISOString(),
+      active: true
+    };
+    await prisma.transaction.create({ data: { userId: appt.userId, type: 'meter_state', amount: 0, coins: 0, description: JSON.stringify(state), relatedId: appt.id } });
+    return res.json({ success: true, perMinute, started: true, elapsedSec: 0 });
+  } catch (e) {
+    console.error('meter/start error:', e);
+    return res.status(500).json({ success: false, message: 'Erreur demarrage compteur', error: e?.message || String(e) });
+  }
+});
+
+// Heartbeat: persist elapsed seconds periodically (resilient to restarts)
+router.post('/meter/heartbeat', verifyToken, async (req, res) => {
+  try {
+    const { sessionId } = req.body || {};
+    if (!sessionId) return res.status(400).json({ success: false, message: 'sessionId requis' });
+    const apptId = parseAppointmentId(sessionId);
+    if (!apptId) return res.status(400).json({ success: false, message: 'sessionId invalide' });
+    const appt = await prisma.appointment.findUnique({
+      where: { id: apptId },
+      include: { expertRel: { select: { userId: true } } }
+    });
+    if (!appt) {
+      console.log(`❌ Appointment not found: ID ${apptId} from sessionId ${sessionId}`);
+      return res.status(404).json({ success: false, message: `Rendez-vous ${apptId} introuvable. Veuillez utiliser un rendez-vous existant.` });
+    }
+    const now = new Date();
+    // Read last state
+    const last = await prisma.transaction.findFirst({
+      where: { userId: appt.userId, type: 'meter_state', relatedId: appt.id },
+      orderBy: { createdAt: 'desc' }
+    });
+    let elapsedSec = 0; let perMinute = 0; let lastHeartbeatUser = null; let lastHeartbeatExpert = null; let lastTick = null;
+    if (last) {
+      try {
+        const s = JSON.parse(last.description || '{}');
+        elapsedSec = s.elapsedSec || 0; perMinute = s.perMinute || 0;
+        lastHeartbeatUser = s.lastHeartbeatUser ? new Date(s.lastHeartbeatUser) : null;
+        lastHeartbeatExpert = s.lastHeartbeatExpert ? new Date(s.lastHeartbeatExpert) : null;
+        lastTick = s.lastTick ? new Date(s.lastTick) : null;
+      } catch {}
+    }
+    // Update role heartbeat
+    const isUser = appt.userId === req.user.id;
+    const isExpert = appt.expertRel && appt.expertRel.userId === req.user.id;
+    if (isUser) lastHeartbeatUser = now; if (isExpert) lastHeartbeatExpert = now;
+    // Prefer socket presence when available
+    let bothPresentNow = false;
+    try {
+      const rp = req.app.get('roomParticipants');
+      const room = `session:${sessionId}`;
+      const set = rp && rp.get(room);
+      if (set) bothPresentNow = set.size >= 2;
+    } catch {}
+    // Fallback to heartbeat if socket presence not available
+    if (!bothPresentNow) {
+      bothPresentNow = (lastHeartbeatUser && (now - lastHeartbeatUser) <= 15000) && (lastHeartbeatExpert && (now - lastHeartbeatExpert) <= 15000);
+    }
+    const tickBase = lastTick || now;
+    const deltaSec = Math.max(0, Math.min(60, Math.floor((now - tickBase) / 1000)));
+    if (bothPresentNow) elapsedSec += deltaSec;
+    const state = {
+      sessionId,
+      elapsedSec,
+      perMinute,
+      lastHeartbeatUser: lastHeartbeatUser ? lastHeartbeatUser.toISOString() : null,
+      lastHeartbeatExpert: lastHeartbeatExpert ? lastHeartbeatExpert.toISOString() : null,
+      lastTick: now.toISOString(),
+      active: true
+    };
+    await prisma.transaction.create({ data: { userId: appt.userId, type: 'meter_state', amount: 0, coins: 0, description: JSON.stringify(state), relatedId: appt.id } });
+    return res.json({ success: true, elapsedSec: state.elapsedSec, perMinute });
+  } catch (e) {
+    console.error('meter/heartbeat error:', e);
+    return res.status(500).json({ success: false, message: 'Erreur heartbeat compteur', error: e?.message || String(e) });
+  }
+});
+
+// Stop metering and settle coins
+router.post('/meter/stop', verifyToken, async (req, res) => {
+  try {
+    const { sessionId } = req.body || {};
+    if (!sessionId) return res.status(400).json({ success: false, message: 'sessionId requis' });
+    const apptId = parseAppointmentId(sessionId);
+    const appt = await prisma.appointment.findUnique({ where: { id: apptId }, include: { expertRel: { select: { id: true, userId: true, hourlyRate: true } } } });
+    if (!appt) {
+      console.log(`❌ Appointment not found: ID ${apptId} from sessionId ${sessionId}`);
+      return res.status(404).json({ success: false, message: `Rendez-vous ${apptId} introuvable. Veuillez utiliser un rendez-vous existant.` });
+    }
+
+    // Read latest state to compute elapsed
+    const last = await prisma.transaction.findFirst({ where: { userId: appt.userId, type: 'meter_state', relatedId: appt.id }, orderBy: { createdAt: 'desc' } });
+    let elapsedSec = 0; let perMinute = Math.max(1, Math.ceil(((appt.expertRel && appt.expertRel.hourlyRate) || 0) / 60)); let lastHeartbeatUser = null; let lastHeartbeatExpert = null; let lastTick = null;
+    if (last) {
+      try {
+        const s = JSON.parse(last.description || '{}');
+        elapsedSec = s.elapsedSec || 0; perMinute = s.perMinute || perMinute;
+        lastHeartbeatUser = s.lastHeartbeatUser ? new Date(s.lastHeartbeatUser) : null;
+        lastHeartbeatExpert = s.lastHeartbeatExpert ? new Date(s.lastHeartbeatExpert) : null;
+        lastTick = s.lastTick ? new Date(s.lastTick) : null;
+      } catch {}
+    }
+    const now = new Date();
+    // Prefer socket presence
+    let bothPresentNow = false;
+    try {
+      const rp = req.app.get('roomParticipants');
+      const room = `session:${sessionId}`;
+      const set = rp && rp.get(room);
+      if (set) bothPresentNow = set.size >= 2;
+    } catch {}
+    if (!bothPresentNow) {
+      bothPresentNow = (lastHeartbeatUser && (now - lastHeartbeatUser) <= 15000) && (lastHeartbeatExpert && (now - lastHeartbeatExpert) <= 15000);
+    }
+    const tickBase = lastTick || now;
+    const deltaSec = Math.max(0, Math.min(60, Math.floor((now - tickBase) / 1000)));
+    const totalSec = elapsedSec + (bothPresentNow ? deltaSec : 0);
+    // Persist final inactive state
+    await prisma.transaction.create({ data: { userId: appt.userId, type: 'meter_state', amount: 0, coins: 0, description: JSON.stringify({ sessionId, elapsedSec: totalSec, perMinute, lastHeartbeatUser: lastHeartbeatUser ? lastHeartbeatUser.toISOString() : null, lastHeartbeatExpert: lastHeartbeatExpert ? lastHeartbeatExpert.toISOString() : null, lastTick: now.toISOString(), active: false }), relatedId: appt.id } });
+
+    const minutes = Math.max(10, Math.ceil(totalSec / 60));
+    const escrow = appt.coins || 0;
+    const usedCoins = Math.max(0, Math.min((perMinute || 0) * minutes, escrow));
+    const refund = Math.max(0, escrow - usedCoins);
+
+    // Vérifier si les conditions pour marquer comme "completed" sont remplies
+    const minDuration = 60; // 60 secondes minimum
+    const hadBothParticipants = (lastHeartbeatUser && lastHeartbeatExpert); // Les 2 se sont connectés
+    const meetsMinDuration = totalSec >= minDuration;
+    const shouldComplete = hadBothParticipants && meetsMinDuration;
+
+    console.log(`📊 Conditions terminaison: totalSec=${totalSec}, hadBothParticipants=${!!hadBothParticipants}, shouldComplete=${shouldComplete}`);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Ne marquer comme 'completed' que si les conditions sont remplies
+      const newStatus = shouldComplete ? 'completed' : 'confirmed';
+      await tx.appointment.update({ where: { id: appt.id }, data: { coins: usedCoins, status: newStatus } });
+
+      if (refund > 0) {
+        await tx.user.update({ where: { id: appt.userId }, data: { coins: { increment: refund } } });
+        await tx.transaction.create({ data: { userId: appt.userId, type: 'refund', amount: 0, coins: refund, description: 'Remboursement fin de session', relatedId: appt.id } });
+      }
+      if (usedCoins > 0 && appt.expertRel && appt.expertRel.userId) {
+        await tx.user.update({ where: { id: appt.expertRel.userId }, data: { coins: { increment: usedCoins } } });
+        await tx.transaction.create({ data: { userId: appt.expertRel.userId, type: 'purchase', amount: 0, coins: usedCoins, description: 'Gains session video', relatedId: appt.id } });
+      }
+      return { usedCoins, refund, completed: shouldComplete };
+    });
+
+    return res.json({ success: true, settled: true, minutes, perMinute, usedCoins: result.usedCoins, refund: result.refund });
+  } catch (e) {
+    console.error('meter/stop error:', e);
+    return res.status(500).json({ success: false, message: 'Erreur arret compteur', error: e?.message || String(e) });
+  }
+});
+
+module.exports = router;
+
