@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { Video } from '../services/api';
 import ApiService from '@/services/api';
 import { useToast } from '@/contexts/ToastContext';
@@ -17,6 +18,7 @@ export default function VideoCard({ video }: { video: Video }) {
   const { user, updateUser } = useAuth();
   const router = useRouter();
   const { addToast } = useToast();
+  const { formatPrice } = useCurrency();
 
   const handleWatchClick = (path: string) => {
     if (!user) {
@@ -52,7 +54,7 @@ export default function VideoCard({ video }: { video: Video }) {
     return views.toString();
   };
 
-  const priceLabel = (video.price || 0) > 0 ? `${video.price}€` : 'Gratuit';
+  const priceLabel = (video.price || 0) > 0 ? formatPrice(video.price || 0) : 'Gratuit';
   const insufficient = !!user && (video.price || 0) > 0 && !isUnlocked && (Number(user?.coins || 0) < Number(video.price || 0));
   const missingCoins = insufficient ? Math.max(0, Number(video.price || 0) - Number(user?.coins || 0)) : 0;
 

@@ -480,10 +480,12 @@ export default function AppHeader() {
                 <i className={`ri-${isMenuOpen ? 'close' : 'menu-2'}-line text-2xl`}></i>
               </button>
 
-              <Link href="/" className="flex items-center space-x-3 group">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-105">
-                  <i className="ri-bubble-chart-line text-white text-xl"></i>
-                </div>
+              <Link href="/" className="flex items-center space-x-2 group">
+                <img
+                  src="/logo.png"
+                  alt="DeepInfluence Logo"
+                  className="h-10 w-auto object-contain -mt-6 group-hover:scale-105 transition-transform duration-300"
+                />
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hidden sm:block">DeepInfluence</span>
               </Link>
             </div>

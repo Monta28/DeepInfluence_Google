@@ -40,8 +40,11 @@ router.put('/appointments/:id', AdminController.updateAppointmentStatus);
 // Trends
 router.get('/metrics/trends', AdminController.trends);
 
-module.exports = router;
+// Transactions
+router.get('/transactions', AdminController.listTransactions);
 
+// Add coins to user
+router.post('/users/:id/coins', AdminController.addCoinsToUser);
 
 // Audit logs
 router.get('/logs', AdminController.listAuditLogs);
@@ -53,5 +56,6 @@ router.get('/export/reviews.csv', AdminController.exportReviews);
 router.get('/export/appointments.csv', AdminController.exportAppointments);
 router.get('/export/videos.csv', AdminController.exportVideos);
 router.get('/export/formations.csv', AdminController.exportFormations);
-
 router.get('/export/logs.csv', AdminController.exportLogs);
+
+module.exports = router;

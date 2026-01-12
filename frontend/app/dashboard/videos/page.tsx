@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import VideoCard from '@/components/VideoCard';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import ApiService, { Video } from '../../../services/api';
 import Link from 'next/link';
 
@@ -36,6 +37,7 @@ export default function VideosPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const { user, isLoading: isAuthLoading } = useAuth();
+    const { formatPrice } = useCurrency();
     const router = useRouter();
 
     useEffect(() => {
@@ -127,7 +129,7 @@ export default function VideosPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <StatCard icon="ri-eye-line" color="blue" label="Vues totales" value={statsData?.totalViews ?? 0} />
                         <StatCard icon="ri-heart-line" color="pink" label="Likes totaux" value={statsData?.totalLikes ?? 0} />
-                        <StatCard icon="ri-money-euro-circle-line" color="yellow" label="Revenus (Vidéos)" value={`${statsData?.videoRevenue ?? 0}€`} />
+                        <StatCard icon="ri-money-euro-circle-line" color="yellow" label="Revenus (Videos)" value={formatPrice(statsData?.videoRevenue ?? 0)} />
                         <StatCard icon="ri-film-line" color="purple" label="Vidéos publiées" value={videos.length} />
                     </div>
 

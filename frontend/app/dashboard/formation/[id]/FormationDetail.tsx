@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import AppHeader from '@/components/AppHeader';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface FormationDetailProps {
   formationId: string;
@@ -11,6 +12,7 @@ interface FormationDetailProps {
 export default function FormationDetail({ formationId }: FormationDetailProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const { formatPrice } = useCurrency();
 
   const formation = {
     id: formationId,
@@ -153,14 +155,14 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
                   
                   <div className="space-y-2 mb-6">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-gray-900">{formation.price}€</span>
+                      <span className="text-2xl font-bold text-gray-900">{formatPrice(formation.price)}</span>
                       {formation.originalPrice && (
-                        <span className="text-lg text-gray-500 line-through">{formation.originalPrice}€</span>
+                        <span className="text-lg text-gray-500 line-through">{formatPrice(formation.originalPrice)}</span>
                       )}
                     </div>
                     {formation.originalPrice && (
                       <p className="text-sm text-green-600">
-                        Économisez {formation.originalPrice - formation.price}€
+                        Economisez {formatPrice(formation.originalPrice - formation.price)}
                       </p>
                     )}
                   </div>
@@ -379,7 +381,7 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-700">Prix:</span>
-                <span className="font-medium text-gray-900">{formation.price}€</span>
+                <span className="font-medium text-gray-900">{formatPrice(formation.price)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-700">Début:</span>

@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '@/components/AppHeader';
 import ApiService from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 export default function CoinsPage() {
   const { user, updateUser } = useAuth();
+  const { formatPrice } = useCurrency();
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -289,7 +291,7 @@ export default function CoinsPage() {
                       )}
                       
                       <div className="text-3xl font-bold text-blue-600 mb-2">
-                        {pkg.price}€
+                        {formatPrice(pkg.price)}
                       </div>
                       
                       <div className="text-sm text-gray-600 mb-4">
@@ -483,7 +485,7 @@ export default function CoinsPage() {
                   </p>
                 )}
                 <p className="text-3xl font-bold text-blue-600">
-                  {selectedPackage.price}€
+                  {formatPrice(selectedPackage.price)}
                 </p>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { Formation } from '../services/api';
 
 export default function FormationCard({ formation, ownerActions = false, favorited, onToggleFavorite }: { formation: Formation, ownerActions?: boolean, favorited?: boolean, onToggleFavorite?: () => void }) {
@@ -11,6 +12,7 @@ export default function FormationCard({ formation, ownerActions = false, favorit
   const [isLiked, setIsLiked] = useState<boolean>(favorited ?? formationIds.has(formation.id));
   const { user } = useAuth();
   const router = useRouter();
+  const { formatPrice } = useCurrency();
   const downloadCsv = async (id: number) => {
     try {
       const base = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api');
@@ -188,7 +190,7 @@ export default function FormationCard({ formation, ownerActions = false, favorit
 
         <div className="flex items-center justify-between mb-4">
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {typeof formation.price === 'number' ? `${formation.price}€` : formation.price}
+            {typeof formation.price === 'number' ? formatPrice(formation.price) : formation.price}
           </div>
           {formation.schedule && (
             <div className="text-sm text-gray-600 dark:text-gray-400">

@@ -6,9 +6,11 @@ import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import ExpertCard from '@/components/ExpertCard';
 import FormationCard from '@/components/FormationCard';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import ApiService, { Expert, Formation } from '@/services/api';
 
 export default function Search() {
+  const { formatPrice } = useCurrency();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -122,8 +124,8 @@ export default function Search() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>0€</span>
-                    <span>{priceRange[1]}€</span>
+                    <span>{formatPrice(0)}</span>
+                    <span>{formatPrice(priceRange[1])}</span>
                   </div>
                 </div>
               </div>

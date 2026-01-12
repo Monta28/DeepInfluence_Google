@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import ApiService from '../../../services/api';
 
 // Composant réutilisable pour les cartes de statistiques
@@ -40,6 +41,7 @@ export default function ProfilePage() {
     const [success, setSuccess] = useState('');
 
     const { user, updateUser, isLoading: isAuthLoading } = useAuth();
+    const { formatPrice, currency } = useCurrency();
     const router = useRouter();
 
     const [userInfo, setUserInfo] = useState({
@@ -274,8 +276,8 @@ export default function ProfilePage() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div><label className="block text-sm font-medium mb-2">Spécialité*</label><input type="text" name="specialty" value={expertInfo.specialty} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg" /></div>
                                             <div><label className="block text-sm font-medium mb-2">Catégorie*</label><select name="category" value={expertInfo.category} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg"><option value="">Sélectionnez...</option><option value="business">Business</option><option value="marketing">Marketing</option><option value="wellness">Bien-être</option><option value="tech">Technologie</option><option value="finance">Finance</option></select></div>
-                                            <div><label className="block text-sm font-medium mb-2">Tarif par heure (€)*</label><input type="number" name="hourlyRate" value={expertInfo.hourlyRate} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                            <div><label className="block text-sm font-medium mb-2">Tarif par message (€)</label><input type="number" name="pricePerMessage" value={expertInfo.pricePerMessage} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                            <div><label className="block text-sm font-medium mb-2">Tarif par heure ({currency.symbol})*</label><input type="number" name="hourlyRate" value={expertInfo.hourlyRate} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                            <div><label className="block text-sm font-medium mb-2">Tarif par message ({currency.symbol})</label><input type="number" name="pricePerMessage" value={expertInfo.pricePerMessage} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg" /></div>
                                             <div className="md:col-span-2"><label className="block text-sm font-medium mb-2">Tags (séparés par virgule)</label><input type="text" name="tags" value={expertInfo.tags.join(', ')} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg" /></div>
                                             <div className="md:col-span-2"><label className="block text-sm font-medium mb-2">Langues (séparées par virgule)</label><input type="text" name="languages" value={expertInfo.languages.join(', ')} onChange={handleExpertInputChange} disabled={!isEditing} className="w-full px-3 py-2 border rounded-lg" /></div>
                                         </div>
@@ -290,7 +292,7 @@ export default function ProfilePage() {
                                 {userStats ? (
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                         {user.userType === 'expert' ? (
-                                            <><StatCard label="Étudiants Actifs" value={userStats.totalStudents ?? 0} icon="ri-group-line" /><StatCard label="Revenus (est.)" value={`${userStats.totalRevenue ?? 0}€`} icon="ri-money-euro-circle-line" /><StatCard label="Note Moyenne" value={`${userStats.averageRating ?? 'N/A'}/5`} icon="ri-star-line" /></>
+                                            <><StatCard label="Etudiants Actifs" value={userStats.totalStudents ?? 0} icon="ri-group-line" /><StatCard label="Revenus (est.)" value={formatPrice(userStats.totalRevenue ?? 0)} icon="ri-money-euro-circle-line" /><StatCard label="Note Moyenne" value={`${userStats.averageRating ?? 'N/A'}/5`} icon="ri-star-line" /></>
                                         ) : (
                                             <><StatCard label="Sessions terminées" value={userStats.sessionsCompleted ?? 0} icon="ri-calendar-check-line" /><StatCard label="Formations suivies" value={userStats.formationsFollowed ?? 0} icon="ri-book-open-line" /><StatCard label="Experts suivis" value={userStats.expertsFollowed ?? 0} icon="ri-user-star-line" /></>
                                         )}

@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import ApiService from '../../services/api';
 
 export default function ExpertProfilePage() {
+  const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState('overview');
   // Etats dynamiques
   const [expertStats, setExpertStats] = useState<any>(null);
@@ -146,7 +148,7 @@ export default function ExpertProfilePage() {
               <div className="bg-white/20 rounded-lg p-4">
                 <p className="text-sm opacity-75">Revenus cumulés (estimés)</p>
                 <p className="text-3xl font-bold">
-                  {(Number(expertStats?.formationRevenue || 0) + Number(expertStats?.videoRevenue || 0))}€
+                  {formatPrice(Number(expertStats?.formationRevenue || 0) + Number(expertStats?.videoRevenue || 0))}
                 </p>
               </div>
             </div>
@@ -170,7 +172,7 @@ export default function ExpertProfilePage() {
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Revenus totaux</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {Number((expertStats?.formationRevenue || 0) + (expertStats?.videoRevenue || 0))}€
+                  {formatPrice(Number((expertStats?.formationRevenue || 0) + (expertStats?.videoRevenue || 0)))}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
@@ -296,7 +298,7 @@ export default function ExpertProfilePage() {
                   >
                     <i className="ri-bank-card-line text-2xl mb-3 block"></i>
                     <h3 className="font-semibold mb-2">Retirer des fonds</h3>
-                    <p className="text-sm opacity-90">Disponible: {expertStats?.availableBalance || 8300}€</p>
+                    <p className="text-sm opacity-90">Disponible: {formatPrice(expertStats?.availableBalance || 8300)}</p>
                   </button>
                 </div>
 
@@ -355,7 +357,7 @@ export default function ExpertProfilePage() {
                       <div>
                         <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Revenus Formations</p>
                         <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
-                          {Number(expertStats?.formationRevenue || 0)}€
+                          {formatPrice(Number(expertStats?.formationRevenue || 0))}
                         </p>
                       </div>
                       <i className="ri-graduation-cap-line text-purple-600 dark:text-purple-400 text-3xl"></i>
@@ -367,7 +369,7 @@ export default function ExpertProfilePage() {
                       <div>
                         <p className="text-sm font-medium text-red-600 dark:text-red-400">Revenus Vidéos</p>
                         <p className="text-3xl font-bold text-red-900 dark:text-red-100">
-                          {Number(expertStats?.videoRevenue || 0)}€
+                          {formatPrice(Number(expertStats?.videoRevenue || 0))}
                         </p>
                       </div>
                       <i className="ri-play-circle-line text-red-600 dark:text-red-400 text-3xl"></i>
@@ -379,7 +381,7 @@ export default function ExpertProfilePage() {
                       <div>
                         <p className="text-sm font-medium text-green-600 dark:text-green-400">Total gagné</p>
                         <p className="text-3xl font-bold text-green-900 dark:text-green-100">
-                          {Number((expertStats?.formationRevenue || 0) + (expertStats?.videoRevenue || 0))}€
+                          {formatPrice(Number((expertStats?.formationRevenue || 0) + (expertStats?.videoRevenue || 0)))}
                         </p>
                       </div>
                       <i className="ri-money-euro-circle-line text-green-600 dark:text-green-400 text-3xl"></i>

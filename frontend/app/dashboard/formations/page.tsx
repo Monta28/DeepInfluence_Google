@@ -6,6 +6,7 @@ import AppHeader from '@/components/AppHeader';
 import FormationCard from '@/components/FormationCard';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import ApiService, { Formation } from '../../../services/api';
 import Link from 'next/link';
 
@@ -37,6 +38,7 @@ export default function FormationsPage() {
 
     const { user, isLoading: isAuthLoading } = useAuth();
     const socket = useSocket();
+    const { formatPrice } = useCurrency();
     const router = useRouter();
     const downloadAllEnrollments = async () => {
         try {
@@ -183,7 +185,7 @@ export default function FormationsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <StatCard icon="ri-group-line" color="green" label="Total Étudiants" value={statsData?.totalStudents ?? 0} />
-                        <StatCard icon="ri-money-euro-circle-line" color="yellow" label="Revenus (Formations)" value={`${statsData?.formationRevenue ?? 0}€`} />
+                        <StatCard icon="ri-money-euro-circle-line" color="yellow" label="Revenus (Formations)" value={formatPrice(statsData?.formationRevenue ?? 0)} />
                         <StatCard icon="ri-star-line" color="purple" label="Note Moyenne" value={`${statsData?.averageRating ?? 0}/5`} />
                         <StatCard icon="ri-book-open-line" color="blue" label="Formations Actives" value={formations.length} />
                     </div>

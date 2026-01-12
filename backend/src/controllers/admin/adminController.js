@@ -551,6 +551,102 @@ class AdminController {
     return this.csv(res, 'logs.csv', rows);
   }
 
+  static async listTransactions(req, res) {
+    try {
+      const { page = 1, limit = 20, type } = req.query;
+      const where = {};
+      if (type) where.type = type;
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const [items, total, statsData] = await Promise.all([
+        prisma.transaction.findMany({
+          where,
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, email: true } }
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: parseInt(limit)
+        }),
+        prisma.transaction.count({ where }),
+        prisma.transaction.groupBy({
+          by: ['type'],
+          _sum: { amount: true, coins: true }
+        })
+      ]);
+
+      const stats = {
+        totalRevenue: 0,
+        totalSpent: 0,
+        totalRefunded: 0,
+        totalBonus: 0
+      };
+
+      statsData.forEach(s => {
+        if (s.type === 'purchase') stats.totalRevenue = s._sum.amount || 0;
+        if (s.type === 'spend') stats.totalSpent = s._sum.coins || 0;
+        if (s.type === 'refund') stats.totalRefunded = s._sum.coins || 0;
+        if (s.type === 'bonus') stats.totalBonus = s._sum.coins || 0;
+      });
+
+      return ApiResponse.success(res, {
+        items,
+        total,
+        stats,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit))
+      });
+    } catch (e) {
+      console.error('Admin list transactions error:', e);
+      return ApiResponse.error(res, 'Erreur lors de la récupération des transactions');
+    }
+  }
+
+  static async addCoinsToUser(req, res) {
+    try {
+      const userId = parseInt(req.params.id);
+      const { coins } = req.body;
+
+      if (!coins || isNaN(parseInt(coins))) {
+        return ApiResponse.badRequest(res, 'Nombre de coins invalide');
+      }
+
+      const coinsToAdd = parseInt(coins);
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) return ApiResponse.notFound(res, 'Utilisateur non trouvé');
+
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: { coins: { increment: coinsToAdd } }
+        }),
+        prisma.transaction.create({
+          data: {
+            userId,
+            type: 'bonus',
+            amount: 0,
+            coins: coinsToAdd,
+            description: `Bonus admin (+${coinsToAdd} coins)`
+          }
+        }),
+        prisma.auditLog.create({
+          data: {
+            adminId: req.user.id,
+            action: 'ADD_COINS',
+            targetType: 'user',
+            targetId: userId,
+            details: `Added ${coinsToAdd} coins`
+          }
+        })
+      ]);
+
+      return ApiResponse.success(res, { coins: user.coins + coinsToAdd }, 'Coins ajoutés avec succès');
+    } catch (e) {
+      console.error('Admin add coins error:', e);
+      return ApiResponse.error(res, 'Erreur lors de l\'ajout des coins');
+    }
+  }
+
 }
 
 module.exports = AdminController;

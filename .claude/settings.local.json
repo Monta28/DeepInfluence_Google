@@ -38,7 +38,9 @@
       "Bash(npx kill-port:*)",
       "Bash(timeout:*)",
       "Bash(ping:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(git branch:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

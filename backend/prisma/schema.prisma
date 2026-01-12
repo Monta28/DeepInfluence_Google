@@ -417,3 +417,13 @@ model VideoRoom {
   @@index([videoSDKRoomId])
   @@map("video_rooms")
 }
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

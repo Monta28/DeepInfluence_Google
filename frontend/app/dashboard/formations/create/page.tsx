@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import ApiService from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 type FieldErrors = Partial<Record<string, string>>;
 
 export default function CreateFormationPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { currency } = useCurrency();
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>('');
@@ -192,7 +194,7 @@ export default function CreateFormationPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Prix (€)</label>
+                  <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Prix ({currency.symbol})</label>
                   <input name="price" value={form.price} onChange={onChange} inputMode="numeric" className={`w-full px-3 py-2 rounded-lg border ${errors.price ? 'border-red-400' : 'border-gray-300 dark:border-gray-700'} bg-white dark:bg-gray-900`} placeholder="Ex: 199" />
                   {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
                 </div>

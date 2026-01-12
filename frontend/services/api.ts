@@ -927,6 +927,50 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // Settings (Currency)
+  static async getCurrency() {
+    const response = await fetch(`${API_BASE_URL}/settings/currency`);
+    return this.handleResponse(response);
+  }
+
+  static async updateCurrency(currencyData: { code: string; symbol: string; name: string; position: 'before' | 'after' }) {
+    const response = await fetch(`${API_BASE_URL}/settings/currency`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(currencyData)
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getAllSettings() {
+    const response = await fetch(`${API_BASE_URL}/settings`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Admin Transactions
+  static async adminListTransactions(params?: { page?: number; limit?: number; type?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.type) searchParams.append('type', params.type);
+
+    const response = await fetch(`${API_BASE_URL}/admin/transactions?${searchParams}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async adminAddCoins(userId: number, coins: number) {
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/coins`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ coins })
+    });
+    return this.handleResponse(response);
+  }
+
 }
 
 export default ApiService;

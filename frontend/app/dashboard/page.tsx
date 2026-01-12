@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import ExpertCard from '@/components/ExpertCard';
 import FormationCard from '@/components/FormationCard';
-import VideoCard from '@/components/VideoCard'; // Importer VideoCard
+import VideoCard from '@/components/VideoCard';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
-import ApiService, { Expert, Formation, Video } from '../../services/api'; // Importer Video type
+import { useCurrency } from '@/contexts/CurrencyContext';
+import ApiService, { Expert, Formation, Video } from '../../services/api';
 
 // Composant pour les cartes de statistiques
 const StatCard = ({ icon, color, label, value }: { icon: string, color: string, label: string, value: string | number }) => (
@@ -28,12 +29,13 @@ const StatCard = ({ icon, color, label, value }: { icon: string, color: string, 
 export default function Dashboard() {
   const [experts, setExperts] = useState<Expert[]>([]);
   const [formations, setFormations] = useState<Formation[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]); // Ajout de l'état pour les vidéos
+  const [videos, setVideos] = useState<Video[]>([]);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const { user, isLoading: isAuthLoading } = useAuth();
+  const { formatPrice } = useCurrency();
   const router = useRouter();
 
   useEffect(() => {
@@ -133,7 +135,7 @@ export default function Dashboard() {
                 <>
                   <StatCard icon="ri-calendar-check-line" color="blue" label="Sessions terminées" value={dashboardData?.sessionsCompleted ?? 0} />
                   <StatCard icon="ri-group-line" color="green" label="Étudiants actifs" value={dashboardData?.totalStudents ?? 0} />
-                  <StatCard icon="ri-money-euro-circle-line" color="yellow" label="Revenus (est.)" value={`${dashboardData?.totalRevenue ?? 0}€`} />
+                  <StatCard icon="ri-money-euro-circle-line" color="yellow" label="Revenus (est.)" value={formatPrice(dashboardData?.totalRevenue ?? 0)} />
                   <StatCard icon="ri-star-line" color="purple" label="Note moyenne" value={`${dashboardData?.averageRating ?? 0}/5`} />
                 </>
               ) : (

@@ -24,6 +24,11 @@ const geistMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "DeepInfluence - Connect with Verified Experts",
   description: "Connect with verified experts, influencers, and certified trainers across all domains. Professional consultation platform with 24/7 support.",
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

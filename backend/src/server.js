@@ -27,6 +27,7 @@ const adminRoutes = require('./routes/admin');
 const favoritesRoutes = require('./routes/favorites');
 const assetsRoutes = require('./routes/assets');
 const videoSessionRoutes = require('./routes/videoSessions');
+const settingsRoutes = require('./routes/settings');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -192,6 +193,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api/assets', assetsRoutes);
 app.use('/api/video', videoSessionRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Gestion des erreurs
 app.use(errorHandler);

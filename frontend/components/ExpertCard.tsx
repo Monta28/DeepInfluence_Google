@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { Expert } from '../services/api';
 
 export default function ExpertCard({ expert, favorited, onToggleFavorite }: { expert: Expert, favorited?: boolean, onToggleFavorite?: () => void }) {
@@ -11,6 +12,7 @@ export default function ExpertCard({ expert, favorited, onToggleFavorite }: { ex
   const [isLiked, setIsLiked] = useState<boolean>(favorited ?? expertIds.has(expert.id));
   const { user } = useAuth();
   const router = useRouter();
+  const { formatPriceWithUnit } = useCurrency();
 
   const handleActionClick = (path: string) => {
     if (!user) {
@@ -148,10 +150,10 @@ export default function ExpertCard({ expert, favorited, onToggleFavorite }: { ex
           </div>
           <div className="text-right">
             <div className="text-lg font-bold text-gray-900 dark:text-white">
-              {expert.hourlyRate}€/h
+              {formatPriceWithUnit(expert.hourlyRate, 'h')}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {expert.pricePerMessage}€/msg
+              {formatPriceWithUnit(expert.pricePerMessage, 'msg')}
             </div>
           </div>
         </div>
