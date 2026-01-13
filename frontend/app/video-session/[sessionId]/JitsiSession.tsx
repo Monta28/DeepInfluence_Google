@@ -26,6 +26,23 @@ interface MeterResponse {
   perMinute?: number;
   elapsedSec?: number;
   message?: string;
+  // Billing info
+  escrowCoins?: number;
+  usedCoins?: number;
+  remainingCoins?: number;
+  remainingMinutes?: number;
+  remainingSec?: number;
+  // Pause/Wait state
+  isPaused?: boolean;
+  userPresent?: boolean;
+  expertPresent?: boolean;
+  disconnectedParty?: 'user' | 'expert' | null;
+  waitTimerActive?: boolean;
+  waitTimerRemainingSec?: number;
+  waitTimerDuration?: number;
+  // Status
+  warning?: string | null;
+  shouldStop?: boolean;
 }
 
 export default function JitsiSession({ sessionId }: JitsiSessionProps) {
@@ -50,6 +67,15 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
   const [participantCount, setParticipantCount] = useState(0);
   const [meterStarted, setMeterStarted] = useState(false);
   const [timerPaused, setTimerPaused] = useState(false);
+
+  // Pause/Wait timer state (from backend)
+  const [isPausedBackend, setIsPausedBackend] = useState(false);
+  const [waitTimerActive, setWaitTimerActive] = useState(false);
+  const [waitTimerRemainingSec, setWaitTimerRemainingSec] = useState(0);
+  const [disconnectedParty, setDisconnectedParty] = useState<'user' | 'expert' | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [remainingCoins, setRemainingCoins] = useState(0);
+  const [remainingMinutes, setRemainingMinutes] = useState(0);
 
   const apiRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -150,30 +176,7 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
     }
   }, [sessionId, meterStarted]);
 
-  // Envoyer un heartbeat
-  const sendHeartbeat = useCallback(async () => {
-    if (!authTokenRef.current) return;
-
-    try {
-      const res = await fetch(`/api/video/meter/heartbeat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authTokenRef.current}`
-        },
-        body: JSON.stringify({ sessionId })
-      });
-
-      const data: MeterResponse = await res.json();
-      if (data.success && data.elapsedSec !== undefined) {
-        setElapsedSeconds(data.elapsedSec);
-      }
-    } catch (err) {
-      console.error('Erreur heartbeat:', err);
-    }
-  }, [sessionId]);
-
-  // Arrêter le compteur
+  // Arrêter le compteur (défini avant sendHeartbeat car utilisé dedans)
   const stopMeter = useCallback(async () => {
     if (!authTokenRef.current) return;
 
@@ -191,6 +194,70 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
       console.error('Erreur arrêt compteur:', err);
     }
   }, [sessionId]);
+
+  // Envoyer un heartbeat
+  const sendHeartbeat = useCallback(async () => {
+    if (!authTokenRef.current) return;
+
+    try {
+      const res = await fetch(`/api/video/meter/heartbeat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authTokenRef.current}`
+        },
+        body: JSON.stringify({ sessionId })
+      });
+
+      const data: MeterResponse = await res.json();
+      if (data.success) {
+        // Update elapsed time
+        if (data.elapsedSec !== undefined) {
+          setElapsedSeconds(data.elapsedSec);
+        }
+
+        // Update pause/wait timer state from backend
+        setIsPausedBackend(data.isPaused || false);
+        setWaitTimerActive(data.waitTimerActive || false);
+        setWaitTimerRemainingSec(data.waitTimerRemainingSec || 0);
+        setDisconnectedParty(data.disconnectedParty || null);
+        setWarning(data.warning || null);
+
+        // Update billing info
+        if (data.remainingCoins !== undefined) {
+          setRemainingCoins(data.remainingCoins);
+        }
+        if (data.remainingMinutes !== undefined) {
+          setRemainingMinutes(data.remainingMinutes);
+        }
+
+        // Sync timer pause state with backend
+        if (data.isPaused && !timerPaused) {
+          setTimerPaused(true);
+          timerPausedRef.current = true;
+          console.log('⏸️ Timer pause synced from backend');
+        } else if (!data.isPaused && timerPaused && !data.disconnectedParty) {
+          setTimerPaused(false);
+          timerPausedRef.current = false;
+          console.log('▶️ Timer resume synced from backend');
+        }
+
+        // Handle auto-stop
+        if (data.shouldStop) {
+          console.log('🛑 Session auto-stop triggered:', data.warning);
+          await stopMeter();
+          router.push('/dashboard');
+        }
+
+        // Log pause state for debugging
+        if (data.isPaused) {
+          console.log(`⏸️ Session paused - disconnected: ${data.disconnectedParty}, waitTimer: ${data.waitTimerActive ? data.waitTimerRemainingSec + 's' : 'OFF'}`);
+        }
+      }
+    } catch (err) {
+      console.error('Erreur heartbeat:', err);
+    }
+  }, [sessionId, timerPaused, stopMeter, router]);
 
   // Récupérer le token JaaS depuis le backend
   useEffect(() => {
@@ -272,22 +339,35 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
 
   // Gérer le timer local quand l'expert est connecté et le timer n'est pas en pause
   useEffect(() => {
-    if (expertConnected && meterStarted && !timerPaused) {
-      // Démarrer le timer local
+    if (expertConnected && meterStarted && !timerPaused && !isPausedBackend) {
+      // Démarrer le timer local seulement si pas en pause
       timerRef.current = setInterval(() => {
         setElapsedSeconds(prev => prev + 1);
       }, 1000);
-
-      // Démarrer les heartbeats (toutes les 10 secondes)
-      heartbeatRef.current = setInterval(() => {
-        sendHeartbeat();
-      }, 10000);
     } else {
       // Arrêter le timer si l'expert n'est pas connecté ou en pause
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [expertConnected, meterStarted, timerPaused, isPausedBackend]);
+
+  // Heartbeat séparé - continue même en pause pour recevoir les updates du wait timer
+  useEffect(() => {
+    if (meterStarted) {
+      // Envoyer un heartbeat immédiatement
+      sendHeartbeat();
+
+      // Puis toutes les 3 secondes pour avoir des updates fréquentes du wait timer
+      heartbeatRef.current = setInterval(() => {
+        sendHeartbeat();
+      }, 3000);
+    } else {
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current);
         heartbeatRef.current = null;
@@ -295,10 +375,9 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
     }
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
-  }, [expertConnected, meterStarted, timerPaused, sendHeartbeat]);
+  }, [meterStarted, sendHeartbeat]);
 
   // Synchroniser les refs avec les états
   useEffect(() => {
@@ -649,6 +728,94 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
           )}
         </div>
       </div>
+
+      {/* Overlay de déconnexion / Wait Timer */}
+      {isPausedBackend && disconnectedParty && (
+        <div className="absolute inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-gray-800 rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl border border-gray-700">
+            {/* Icon */}
+            <div className={`text-6xl mb-4 ${disconnectedParty === 'user' ? 'animate-pulse' : ''}`}>
+              {disconnectedParty === 'user' ? '👤' : '👨‍💼'}
+            </div>
+
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {disconnectedParty === 'user' ? 'Client déconnecté' : 'Expert déconnecté'}
+            </h2>
+
+            {/* Description */}
+            <p className="text-gray-400 mb-4">
+              {disconnectedParty === 'user'
+                ? 'Le client a quitté la session. Le timer est en pause.'
+                : 'L\'expert a quitté la session. Le timer est en pause en attendant son retour.'}
+            </p>
+
+            {/* Wait Timer */}
+            {waitTimerActive && disconnectedParty === 'user' && (
+              <div className="bg-orange-500/20 border border-orange-500/50 rounded-xl p-4 mb-4">
+                <div className="text-sm text-orange-400 mb-2">Timer d'attente</div>
+                <div className="text-4xl font-mono font-bold text-orange-400">
+                  {Math.floor(waitTimerRemainingSec / 60)}:{(waitTimerRemainingSec % 60).toString().padStart(2, '0')}
+                </div>
+                <p className="text-xs text-orange-300 mt-2">
+                  La session se terminera automatiquement si le client ne revient pas.
+                </p>
+              </div>
+            )}
+
+            {/* Expert disconnected - no wait timer */}
+            {disconnectedParty === 'expert' && !waitTimerActive && (
+              <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl p-4 mb-4">
+                <div className="text-sm text-blue-400 mb-2">En attente de l'expert</div>
+                <div className="text-xl text-blue-300">
+                  Pas de limite de temps
+                </div>
+                <p className="text-xs text-blue-300 mt-2">
+                  Vous ne serez pas facturé pendant cette attente.
+                </p>
+              </div>
+            )}
+
+            {/* Session info */}
+            <div className="flex justify-center gap-4 text-sm">
+              <div className="bg-gray-700 rounded-lg px-3 py-2">
+                <span className="text-gray-400">Durée: </span>
+                <span className="text-white font-mono">{formatTime(elapsedSeconds)}</span>
+              </div>
+              <div className="bg-gray-700 rounded-lg px-3 py-2">
+                <span className="text-gray-400">Coins restants: </span>
+                <span className="text-yellow-400 font-bold">{remainingCoins}</span>
+              </div>
+            </div>
+
+            {/* Warning */}
+            {warning === 'low' && (
+              <div className="mt-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-2 text-yellow-400 text-sm">
+                ⚠️ Coins faibles - {remainingMinutes} minutes restantes
+              </div>
+            )}
+            {warning === 'critical' && (
+              <div className="mt-4 bg-red-500/20 border border-red-500/50 rounded-lg p-2 text-red-400 text-sm">
+                🚨 Coins critiques - {remainingMinutes} minutes restantes
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Warning coins banner (when not paused) */}
+      {!isPausedBackend && warning && (warning === 'low' || warning === 'critical') && (
+        <div className={`absolute top-28 left-4 right-4 z-50 rounded-lg p-3 text-center ${
+          warning === 'critical' ? 'bg-red-500/90' : 'bg-yellow-500/90'
+        }`}>
+          <span className="text-white font-medium">
+            {warning === 'critical'
+              ? `🚨 Attention: Seulement ${remainingMinutes} minutes de coins restantes!`
+              : `⚠️ Coins faibles: ${remainingMinutes} minutes restantes`
+            }
+          </span>
+        </div>
+      )}
 
       {/* Jitsi Meeting */}
       <JitsiMeeting
