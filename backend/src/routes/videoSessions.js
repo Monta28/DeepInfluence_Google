@@ -423,26 +423,19 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
         console.log(`🛑 Session ${sessionId}: User wait timer expired! Auto-closing session.`);
       }
     } else if (!expertPresent && userPresent) {
-      // User present but expert disconnected - PAUSE and start wait timer
+      // User present but expert disconnected - PAUSE only (no wait timer, no auto-close)
+      // L'expert qui se déconnecte ne doit pas pénaliser le client
       isPaused = true;
       disconnectedParty = 'expert';
 
-      if (!waitTimerStartedAt) {
-        waitTimerStartedAt = now;
+      if (!pausedAt) {
         pausedAt = now;
         console.log(`⏸️ Session ${sessionId}: EXPERT disconnected, timer PAUSED at ${Math.floor(elapsedSec/60)}m${elapsedSec%60}s`);
-        console.log(`⏳ Wait timer started: ${Math.floor(waitTimerDuration/60)}m${waitTimerDuration%60}s max`);
+        console.log(`⏳ Waiting for expert to reconnect (no time limit for client)`);
       }
-
-      const waitElapsed = Math.floor((now - waitTimerStartedAt) / 1000);
-      waitTimerRemainingSec = Math.max(0, waitTimerDuration - waitElapsed);
-      waitTimerActive = true;
-
-      if (waitTimerRemainingSec <= 0) {
-        shouldAutoClose = true;
-        autoCloseReason = 'expertWaitTimerExpired';
-        console.log(`🛑 Session ${sessionId}: Expert wait timer expired! Auto-closing session.`);
-      }
+      // PAS de wait timer pour déconnexion expert - le client attend sans limite
+      waitTimerActive = false;
+      waitTimerRemainingSec = 0;
     } else {
       // Neither present - pause without wait timer (both disconnected)
       isPaused = true;
