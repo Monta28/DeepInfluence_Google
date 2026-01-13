@@ -314,6 +314,7 @@ router.post('/meter/start', verifyToken, async (req, res) => {
 });
 
 // Heartbeat: persist elapsed seconds periodically (resilient to restarts)
+// Also checks if user has enough coins to continue
 router.post('/meter/heartbeat', verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.body || {};
@@ -322,7 +323,10 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
     if (!apptId) return res.status(400).json({ success: false, message: 'sessionId invalide' });
     const appt = await prisma.appointment.findUnique({
       where: { id: apptId },
-      include: { expertRel: { select: { userId: true } } }
+      include: {
+        expertRel: { select: { userId: true, hourlyRate: true } },
+        user: { select: { coins: true } }
+      }
     });
     if (!appt) {
       console.log(`❌ Appointment not found: ID ${apptId} from sessionId ${sessionId}`);
@@ -334,11 +338,14 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
       where: { userId: appt.userId, type: 'meter_state', relatedId: appt.id },
       orderBy: { createdAt: 'desc' }
     });
-    let elapsedSec = 0; let perMinute = 0; let lastHeartbeatUser = null; let lastHeartbeatExpert = null; let lastTick = null;
+    let elapsedSec = 0;
+    let perMinute = Math.max(1, Math.ceil(((appt.expertRel && appt.expertRel.hourlyRate) || 0) / 60));
+    let lastHeartbeatUser = null; let lastHeartbeatExpert = null; let lastTick = null;
     if (last) {
       try {
         const s = JSON.parse(last.description || '{}');
-        elapsedSec = s.elapsedSec || 0; perMinute = s.perMinute || 0;
+        elapsedSec = s.elapsedSec || 0;
+        perMinute = s.perMinute || perMinute;
         lastHeartbeatUser = s.lastHeartbeatUser ? new Date(s.lastHeartbeatUser) : null;
         lastHeartbeatExpert = s.lastHeartbeatExpert ? new Date(s.lastHeartbeatExpert) : null;
         lastTick = s.lastTick ? new Date(s.lastTick) : null;
@@ -363,6 +370,33 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
     const tickBase = lastTick || now;
     const deltaSec = Math.max(0, Math.min(60, Math.floor((now - tickBase) / 1000)));
     if (bothPresentNow) elapsedSec += deltaSec;
+
+    // Calculate billing info
+    const escrowCoins = appt.coins || 0; // Coins reserved for this appointment
+    const elapsedMinutes = Math.ceil(elapsedSec / 60);
+    const usedCoins = Math.min(perMinute * elapsedMinutes, escrowCoins);
+    const remainingCoins = Math.max(0, escrowCoins - usedCoins);
+    const remainingMinutes = perMinute > 0 ? Math.floor(remainingCoins / perMinute) : 0;
+    const remainingSec = remainingMinutes * 60;
+
+    // Warning levels
+    const WARNING_THRESHOLD_MIN = 5; // Warn when 5 minutes remaining
+    const CRITICAL_THRESHOLD_MIN = 2; // Critical when 2 minutes remaining
+    let warning = null;
+    let shouldStop = false;
+
+    if (remainingMinutes <= 0 && elapsedSec > 60) {
+      warning = 'outOfCoins';
+      shouldStop = true;
+      console.log(`⚠️ Session ${sessionId}: Client à court de coins! Arrêt forcé.`);
+    } else if (remainingMinutes <= CRITICAL_THRESHOLD_MIN) {
+      warning = 'critical';
+      console.log(`🔴 Session ${sessionId}: ${remainingMinutes} minutes restantes (critique)`);
+    } else if (remainingMinutes <= WARNING_THRESHOLD_MIN) {
+      warning = 'low';
+      console.log(`🟡 Session ${sessionId}: ${remainingMinutes} minutes restantes`);
+    }
+
     const state = {
       sessionId,
       elapsedSec,
@@ -370,10 +404,23 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
       lastHeartbeatUser: lastHeartbeatUser ? lastHeartbeatUser.toISOString() : null,
       lastHeartbeatExpert: lastHeartbeatExpert ? lastHeartbeatExpert.toISOString() : null,
       lastTick: now.toISOString(),
-      active: true
+      active: !shouldStop
     };
     await prisma.transaction.create({ data: { userId: appt.userId, type: 'meter_state', amount: 0, coins: 0, description: JSON.stringify(state), relatedId: appt.id } });
-    return res.json({ success: true, elapsedSec: state.elapsedSec, perMinute });
+
+    return res.json({
+      success: true,
+      elapsedSec: state.elapsedSec,
+      perMinute,
+      // Billing info
+      escrowCoins,
+      usedCoins,
+      remainingCoins,
+      remainingMinutes,
+      remainingSec,
+      warning,
+      shouldStop
+    });
   } catch (e) {
     console.error('meter/heartbeat error:', e);
     return res.status(500).json({ success: false, message: 'Erreur heartbeat compteur', error: e?.message || String(e) });
@@ -422,7 +469,8 @@ router.post('/meter/stop', verifyToken, async (req, res) => {
     // Persist final inactive state
     await prisma.transaction.create({ data: { userId: appt.userId, type: 'meter_state', amount: 0, coins: 0, description: JSON.stringify({ sessionId, elapsedSec: totalSec, perMinute, lastHeartbeatUser: lastHeartbeatUser ? lastHeartbeatUser.toISOString() : null, lastHeartbeatExpert: lastHeartbeatExpert ? lastHeartbeatExpert.toISOString() : null, lastTick: now.toISOString(), active: false }), relatedId: appt.id } });
 
-    const minutes = Math.max(10, Math.ceil(totalSec / 60));
+    // Calculer les minutes facturées (minimum 1 minute si session valide)
+    const minutes = totalSec > 0 ? Math.max(1, Math.ceil(totalSec / 60)) : 0;
     const escrow = appt.coins || 0;
     const usedCoins = Math.max(0, Math.min((perMinute || 0) * minutes, escrow));
     const refund = Math.max(0, escrow - usedCoins);
@@ -433,25 +481,81 @@ router.post('/meter/stop', verifyToken, async (req, res) => {
     const meetsMinDuration = totalSec >= minDuration;
     const shouldComplete = hadBothParticipants && meetsMinDuration;
 
-    console.log(`📊 Conditions terminaison: totalSec=${totalSec}, hadBothParticipants=${!!hadBothParticipants}, shouldComplete=${shouldComplete}`);
+    console.log(`📊 Fin session ${sessionId}:`);
+    console.log(`   - Durée: ${Math.floor(totalSec / 60)}m ${totalSec % 60}s (${minutes} min facturées)`);
+    console.log(`   - Tarif: ${perMinute} coins/min`);
+    console.log(`   - Escrow: ${escrow} coins | Utilisés: ${usedCoins} coins | Remboursé: ${refund} coins`);
+    console.log(`   - Participants présents: ${!!hadBothParticipants} | Statut: ${shouldComplete ? 'completed' : 'confirmed'}`);
 
     const result = await prisma.$transaction(async (tx) => {
       // Ne marquer comme 'completed' que si les conditions sont remplies
       const newStatus = shouldComplete ? 'completed' : 'confirmed';
       await tx.appointment.update({ where: { id: appt.id }, data: { coins: usedCoins, status: newStatus } });
 
+      // Rembourser le client si des coins restent
       if (refund > 0) {
         await tx.user.update({ where: { id: appt.userId }, data: { coins: { increment: refund } } });
-        await tx.transaction.create({ data: { userId: appt.userId, type: 'refund', amount: 0, coins: refund, description: 'Remboursement fin de session', relatedId: appt.id } });
+        await tx.transaction.create({
+          data: {
+            userId: appt.userId,
+            type: 'refund',
+            amount: 0,
+            coins: refund,
+            description: `Remboursement session #${appt.id} (${minutes} min utilisées sur ${Math.ceil(escrow / perMinute)} min réservées)`,
+            relatedId: appt.id
+          }
+        });
+        console.log(`💰 Remboursement: ${refund} coins -> Client #${appt.userId}`);
       }
+
+      // Transférer les coins utilisés à l'expert
       if (usedCoins > 0 && appt.expertRel && appt.expertRel.userId) {
         await tx.user.update({ where: { id: appt.expertRel.userId }, data: { coins: { increment: usedCoins } } });
-        await tx.transaction.create({ data: { userId: appt.expertRel.userId, type: 'purchase', amount: 0, coins: usedCoins, description: 'Gains session video', relatedId: appt.id } });
+        await tx.transaction.create({
+          data: {
+            userId: appt.expertRel.userId,
+            type: 'bonus', // 'bonus' car c'est un gain pour l'expert
+            amount: 0,
+            coins: usedCoins,
+            description: `Gains session vidéo #${appt.id} (${minutes} min à ${perMinute} coins/min)`,
+            relatedId: appt.id
+          }
+        });
+        console.log(`💸 Paiement: ${usedCoins} coins -> Expert #${appt.expertRel.userId}`);
       }
-      return { usedCoins, refund, completed: shouldComplete };
+
+      return { usedCoins, refund, completed: shouldComplete, expertId: appt.expertRel?.userId };
     });
 
-    return res.json({ success: true, settled: true, minutes, perMinute, usedCoins: result.usedCoins, refund: result.refund });
+    // Notifier via socket si disponible
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        // Notifier le client
+        io.to(`user:${appt.userId}`).emit('coinUpdate', { coins: refund, type: 'refund' });
+        // Notifier l'expert
+        if (result.expertId) {
+          io.to(`user:${result.expertId}`).emit('coinUpdate', { coins: usedCoins, type: 'earning' });
+        }
+      }
+    } catch (e) {
+      console.log('Socket notification failed:', e.message);
+    }
+
+    return res.json({
+      success: true,
+      settled: true,
+      // Détails de la session
+      totalSec,
+      minutes,
+      perMinute,
+      // Détails financiers
+      escrow,
+      usedCoins: result.usedCoins,
+      refund: result.refund,
+      // Statut
+      completed: result.completed
+    });
   } catch (e) {
     console.error('meter/stop error:', e);
     return res.status(500).json({ success: false, message: 'Erreur arret compteur', error: e?.message || String(e) });
