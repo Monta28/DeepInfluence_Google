@@ -121,7 +121,8 @@ model Formation {
   prerequisites  String?  // JSON array as string
   included       String?  // JSON array as string
   tools          String?  // JSON array as string
-  
+  videoConferenceLink String? // Lien de vidéoconférence (accessible uniquement aux inscrits)
+
   // Relations
   expert         Expert @relation(fields: [instructorId], references: [id])
   enrollments    UserFormation[]

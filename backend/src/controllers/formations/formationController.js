@@ -177,6 +177,11 @@ class FormationController {
 
       // Formater les données
       const isOwner = !!(req.user && formation.expert && formation.expert.user && formation.expert.user.id === req.user.id);
+      const isEnrolled = req.user ? formation.enrollments.some(e => e.user && e.user.id === req.user.id) : false;
+
+      // Le lien de vidéoconférence n'est accessible qu'aux inscrits ou au propriétaire
+      const canAccessVideoLink = isOwner || isEnrolled;
+
       const formattedFormation = {
         id: formation.id,
         title: formation.title,
@@ -207,6 +212,9 @@ class FormationController {
         included: safeParse(formation.included, []),
         tools: safeParse(formation.tools, []),
         category: formation.category,
+        // Lien vidéoconférence - uniquement pour les inscrits ou le propriétaire
+        videoConferenceLink: canAccessVideoLink ? formation.videoConferenceLink : null,
+        hasVideoConferenceLink: !!formation.videoConferenceLink, // Indique si un lien existe (même si non accessible)
         expert: formation.expert ? {
           id: formation.expert.id,
           name: formation.expert.name,
@@ -215,7 +223,7 @@ class FormationController {
         } : null,
         enrollments: formation.enrollments,
         reviews: formation.reviews,
-        isEnrolled: req.user ? formation.enrollments.some(e => e.user && e.user.id === req.user.id) : false,
+        isEnrolled,
         isOwner
       };
 
@@ -250,7 +258,8 @@ class FormationController {
         prerequisites = [],
         included = [],
         tools = [],
-        category
+        category,
+        videoConferenceLink // Lien vidéoconférence (accessible uniquement aux inscrits)
       } = req.body;
 
       // Helpers de normalisation
@@ -317,7 +326,8 @@ class FormationController {
           prerequisites: JSON.stringify(toArray(prerequisites)),
           included: JSON.stringify(toArray(included)),
           tools: JSON.stringify(toArray(tools)),
-          category
+          category,
+          videoConferenceLink: videoConferenceLink ? videoConferenceLink.trim() : null
         },
         include: {
           expert: {

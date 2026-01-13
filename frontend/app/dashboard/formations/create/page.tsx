@@ -19,6 +19,11 @@ export default function CreateFormationPage() {
   const [success, setSuccess] = useState<string>('');
   const [errors, setErrors] = useState<FieldErrors>({});
 
+  // État pour le mode d'image (url ou upload)
+  const [imageMode, setImageMode] = useState<'url' | 'upload'>('url');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>('');
+
   const [form, setForm] = useState({
     title: '',
     category: '',
@@ -37,7 +42,8 @@ export default function CreateFormationPage() {
     objectivesInput: '',
     prerequisitesInput: '',
     includedInput: '',
-    toolsInput: ''
+    toolsInput: '',
+    videoConferenceLink: '' // Lien de vidéoconférence
   });
 
   useEffect(() => {
@@ -68,6 +74,55 @@ export default function CreateFormationPage() {
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Gérer l'upload d'image
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Vérifier le type de fichier
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Type de fichier non supporté. Utilisez JPEG, PNG, GIF ou WebP.');
+      return;
+    }
+
+    // Vérifier la taille (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('L\'image est trop volumineuse. Maximum 5MB.');
+      return;
+    }
+
+    setUploadingImage(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/upload/formation-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.data?.url) {
+        setForm(prev => ({ ...prev, image: data.data.url }));
+        setImagePreview(data.data.url);
+      } else {
+        throw new Error(data.message || 'Erreur lors du téléchargement');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erreur lors du téléchargement de l\'image');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -113,7 +168,8 @@ export default function CreateFormationPage() {
         tools: form.toolsInput
           .split(',')
           .map((t: any) => t.trim())
-          .filter(Boolean)
+          .filter(Boolean),
+        videoConferenceLink: form.videoConferenceLink.trim() || undefined
       };
       const res = await ApiService.createFormation(payload as any);
       if (res?.success) {
@@ -213,9 +269,135 @@ export default function CreateFormationPage() {
                 <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Date prochaine session</label>
                 <input type="date" name="nextSession" value={form.nextSession} onChange={onChange} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900" />
               </div>
+              {/* Image avec toggle URL/Upload */}
               <div className="md:col-span-2">
-                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Image (URL)</label>
-                <input name="image" value={form.image} onChange={onChange} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900" placeholder="https://..." />
+                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-2">Image de la formation</label>
+
+                {/* Toggle entre URL et Upload */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('url')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      imageMode === 'url'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    Lien URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('upload')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      imageMode === 'upload'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    Télécharger
+                  </button>
+                </div>
+
+                {/* Input URL */}
+                {imageMode === 'url' && (
+                  <input
+                    name="image"
+                    value={form.image}
+                    onChange={onChange}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    placeholder="https://exemple.com/image.jpg"
+                  />
+                )}
+
+                {/* Input Upload */}
+                {imageMode === 'upload' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <label className="flex-1 cursor-pointer">
+                        <div className={`px-4 py-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 transition-colors text-center ${uploadingImage ? 'opacity-50' : ''}`}>
+                          {uploadingImage ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                              <span className="text-gray-600 dark:text-gray-400">Téléchargement...</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-600 dark:text-gray-400">
+                              Cliquez pour sélectionner une image (JPEG, PNG, GIF, WebP - max 5MB)
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          disabled={uploadingImage}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Prévisualisation */}
+                    {(imagePreview || form.image) && (
+                      <div className="relative">
+                        <img
+                          src={imagePreview || form.image}
+                          alt="Prévisualisation"
+                          className="w-full h-48 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm(prev => ({ ...prev, image: '' }));
+                            setImagePreview('');
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Prévisualisation pour mode URL */}
+                {imageMode === 'url' && form.image && (
+                  <div className="mt-3">
+                    <img
+                      src={form.image}
+                      alt="Prévisualisation"
+                      className="w-full h-48 object-cover rounded-lg"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Lien de vidéoconférence */}
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
+                  Lien de vidéoconférence
+                  <span className="text-xs text-gray-400 ml-2">(Accessible uniquement aux inscrits)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    name="videoConferenceLink"
+                    value={form.videoConferenceLink}
+                    onChange={onChange}
+                    className="w-full px-3 py-2 pl-10 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    placeholder="https://meet.google.com/xxx ou https://zoom.us/j/xxx"
+                  />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ce lien sera visible uniquement par les participants inscrits à la formation.
+                </p>
               </div>
           </div>
         </section>

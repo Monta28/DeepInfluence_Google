@@ -7,8 +7,10 @@ const prisma = require('../../services/database');
 // Créer les dossiers d'uploads dans le backend s'ils n'existent pas
 const userUploadDir = path.join(__dirname, '../../../public/images/users');
 const expertUploadDir = path.join(__dirname, '../../../public/images/experts');
+const formationUploadDir = path.join(__dirname, '../../../public/images/formations');
 if (!fs.existsSync(userUploadDir)) fs.mkdirSync(userUploadDir, { recursive: true });
 if (!fs.existsSync(expertUploadDir)) fs.mkdirSync(expertUploadDir, { recursive: true });
+if (!fs.existsSync(formationUploadDir)) fs.mkdirSync(formationUploadDir, { recursive: true });
 
 // Configuration de Multer pour le stockage des fichiers
 const storage = multer.diskStorage({
@@ -46,6 +48,33 @@ const upload = multer({
     }
 }).single('avatar');
 
+// Configuration de Multer pour les images de formation
+const formationStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, formationUploadDir);
+    },
+    filename: (req, file, cb) => {
+        const extension = path.extname(file.originalname);
+        const timestamp = Date.now();
+        const newFilename = `formation_${req.user.id}_${timestamp}${extension}`;
+        cb(null, newFilename);
+    }
+});
+
+const uploadFormationImage = multer({
+    storage: formationStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // Limite de 5MB
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const mimeType = allowedTypes.test(file.mimetype);
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        if (mimeType && extname) {
+            return cb(null, true);
+        }
+        cb(new Error('Type de fichier non supporté. Utilisez JPEG, PNG, GIF ou WebP.'));
+    }
+}).single('image');
+
 class UploadController {
     static handleAvatarUpload(req, res) {
         upload(req, res, (err) => {
@@ -60,6 +89,21 @@ class UploadController {
             const fileUrl = `/images/${subPath}/${req.file.filename}`;
             
             return ApiResponse.success(res, { url: fileUrl }, 'Image téléchargée avec succès.');
+        });
+    }
+
+    static handleFormationImageUpload(req, res) {
+        uploadFormationImage(req, res, (err) => {
+            if (err) {
+                return ApiResponse.badRequest(res, err.message || 'Erreur lors du téléchargement.');
+            }
+            if (!req.file) {
+                return ApiResponse.badRequest(res, 'Aucun fichier fourni.');
+            }
+
+            const fileUrl = `/images/formations/${req.file.filename}`;
+
+            return ApiResponse.success(res, { url: fileUrl }, 'Image de formation téléchargée avec succès.');
         });
     }
 }
