@@ -314,7 +314,7 @@ router.post('/meter/start', verifyToken, async (req, res) => {
 });
 
 // Heartbeat: persist elapsed seconds periodically (resilient to restarts)
-// Also checks if user has enough coins to continue
+// Includes pause/resume logic and wait timer when user disconnects
 router.post('/meter/heartbeat', verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.body || {};
@@ -333,14 +333,21 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: `Rendez-vous ${apptId} introuvable. Veuillez utiliser un rendez-vous existant.` });
     }
     const now = new Date();
+
     // Read last state
     const last = await prisma.transaction.findFirst({
       where: { userId: appt.userId, type: 'meter_state', relatedId: appt.id },
       orderBy: { createdAt: 'desc' }
     });
+
     let elapsedSec = 0;
     let perMinute = Math.max(1, Math.ceil(((appt.expertRel && appt.expertRel.hourlyRate) || 0) / 60));
-    let lastHeartbeatUser = null; let lastHeartbeatExpert = null; let lastTick = null;
+    let lastHeartbeatUser = null;
+    let lastHeartbeatExpert = null;
+    let lastTick = null;
+    let pausedAt = null; // Timestamp when session was paused
+    let waitTimerStartedAt = null; // When wait timer started
+
     if (last) {
       try {
         const s = JSON.parse(last.description || '{}');
@@ -349,30 +356,84 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
         lastHeartbeatUser = s.lastHeartbeatUser ? new Date(s.lastHeartbeatUser) : null;
         lastHeartbeatExpert = s.lastHeartbeatExpert ? new Date(s.lastHeartbeatExpert) : null;
         lastTick = s.lastTick ? new Date(s.lastTick) : null;
+        pausedAt = s.pausedAt ? new Date(s.pausedAt) : null;
+        waitTimerStartedAt = s.waitTimerStartedAt ? new Date(s.waitTimerStartedAt) : null;
       } catch {}
     }
+
     // Update role heartbeat
     const isUser = appt.userId === req.user.id;
     const isExpert = appt.expertRel && appt.expertRel.userId === req.user.id;
-    if (isUser) lastHeartbeatUser = now; if (isExpert) lastHeartbeatExpert = now;
-    // Prefer socket presence when available
-    let bothPresentNow = false;
-    try {
-      const rp = req.app.get('roomParticipants');
-      const room = `session:${sessionId}`;
-      const set = rp && rp.get(room);
-      if (set) bothPresentNow = set.size >= 2;
-    } catch {}
-    // Fallback to heartbeat if socket presence not available
-    if (!bothPresentNow) {
-      bothPresentNow = (lastHeartbeatUser && (now - lastHeartbeatUser) <= 15000) && (lastHeartbeatExpert && (now - lastHeartbeatExpert) <= 15000);
+    if (isUser) lastHeartbeatUser = now;
+    if (isExpert) lastHeartbeatExpert = now;
+
+    // Check presence (15 sec timeout for heartbeat)
+    const HEARTBEAT_TIMEOUT = 15000;
+    const userPresent = lastHeartbeatUser && (now - lastHeartbeatUser) <= HEARTBEAT_TIMEOUT;
+    const expertPresent = lastHeartbeatExpert && (now - lastHeartbeatExpert) <= HEARTBEAT_TIMEOUT;
+    const bothPresent = userPresent && expertPresent;
+
+    // Calculate appointment duration and remaining time
+    const appointmentDuration = appt.duration || 30; // Default 30 min if not specified
+    const appointmentDurationSec = appointmentDuration * 60;
+    const remainingAppointmentSec = Math.max(0, appointmentDurationSec - elapsedSec);
+
+    // Wait timer calculation: MIN(remaining time, 1/3 of appointment duration)
+    const maxWaitSec = Math.floor(appointmentDurationSec / 3);
+    const waitTimerDuration = Math.min(remainingAppointmentSec, maxWaitSec);
+
+    // State flags
+    let isPaused = false;
+    let waitTimerActive = false;
+    let waitTimerRemainingSec = 0;
+    let shouldAutoClose = false;
+    let autoCloseReason = null;
+
+    // LOGIC: Timer only runs when BOTH participants are present
+    if (bothPresent) {
+      // Both present - timer runs normally, clear pause state
+      const tickBase = lastTick || now;
+      const deltaSec = Math.max(0, Math.min(60, Math.floor((now - tickBase) / 1000)));
+      elapsedSec += deltaSec;
+      pausedAt = null;
+      waitTimerStartedAt = null;
+      console.log(`✅ Session ${sessionId}: Both present, timer running (${Math.floor(elapsedSec/60)}m${elapsedSec%60}s)`);
+    } else if (expertPresent && !userPresent) {
+      // Expert present but user disconnected - PAUSE and start wait timer
+      isPaused = true;
+
+      if (!waitTimerStartedAt) {
+        // Start wait timer now
+        waitTimerStartedAt = now;
+        pausedAt = now;
+        console.log(`⏸️ Session ${sessionId}: User disconnected, timer PAUSED at ${Math.floor(elapsedSec/60)}m${elapsedSec%60}s`);
+        console.log(`⏳ Wait timer started: ${Math.floor(waitTimerDuration/60)}m${waitTimerDuration%60}s max`);
+      }
+
+      // Calculate wait timer remaining
+      const waitElapsed = Math.floor((now - waitTimerStartedAt) / 1000);
+      waitTimerRemainingSec = Math.max(0, waitTimerDuration - waitElapsed);
+      waitTimerActive = true;
+
+      if (waitTimerRemainingSec <= 0) {
+        // Wait timer expired - auto close session
+        shouldAutoClose = true;
+        autoCloseReason = 'waitTimerExpired';
+        console.log(`🛑 Session ${sessionId}: Wait timer expired! Auto-closing session.`);
+      }
+    } else if (!expertPresent && userPresent) {
+      // User present but expert disconnected - also pause (expert issue)
+      isPaused = true;
+      if (!pausedAt) pausedAt = now;
+      console.log(`⏸️ Session ${sessionId}: Expert disconnected, waiting for expert...`);
+    } else {
+      // Neither present - pause
+      isPaused = true;
+      if (!pausedAt) pausedAt = now;
     }
-    const tickBase = lastTick || now;
-    const deltaSec = Math.max(0, Math.min(60, Math.floor((now - tickBase) / 1000)));
-    if (bothPresentNow) elapsedSec += deltaSec;
 
     // Calculate billing info
-    const escrowCoins = appt.coins || 0; // Coins reserved for this appointment
+    const escrowCoins = appt.coins || 0;
     const elapsedMinutes = Math.ceil(elapsedSec / 60);
     const usedCoins = Math.min(perMinute * elapsedMinutes, escrowCoins);
     const remainingCoins = Math.max(0, escrowCoins - usedCoins);
@@ -380,21 +441,23 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
     const remainingSec = remainingMinutes * 60;
 
     // Warning levels
-    const WARNING_THRESHOLD_MIN = 5; // Warn when 5 minutes remaining
-    const CRITICAL_THRESHOLD_MIN = 2; // Critical when 2 minutes remaining
+    const WARNING_THRESHOLD_MIN = 5;
+    const CRITICAL_THRESHOLD_MIN = 2;
     let warning = null;
-    let shouldStop = false;
+    let shouldStop = shouldAutoClose;
 
-    if (remainingMinutes <= 0 && elapsedSec > 60) {
+    if (shouldAutoClose) {
+      warning = autoCloseReason;
+    } else if (remainingMinutes <= 0 && elapsedSec > 60) {
       warning = 'outOfCoins';
       shouldStop = true;
       console.log(`⚠️ Session ${sessionId}: Client à court de coins! Arrêt forcé.`);
-    } else if (remainingMinutes <= CRITICAL_THRESHOLD_MIN) {
+    } else if (remainingMinutes <= CRITICAL_THRESHOLD_MIN && !isPaused) {
       warning = 'critical';
-      console.log(`🔴 Session ${sessionId}: ${remainingMinutes} minutes restantes (critique)`);
-    } else if (remainingMinutes <= WARNING_THRESHOLD_MIN) {
+    } else if (remainingMinutes <= WARNING_THRESHOLD_MIN && !isPaused) {
       warning = 'low';
-      console.log(`🟡 Session ${sessionId}: ${remainingMinutes} minutes restantes`);
+    } else if (isPaused && waitTimerActive) {
+      warning = 'userDisconnected';
     }
 
     const state = {
@@ -404,6 +467,8 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
       lastHeartbeatUser: lastHeartbeatUser ? lastHeartbeatUser.toISOString() : null,
       lastHeartbeatExpert: lastHeartbeatExpert ? lastHeartbeatExpert.toISOString() : null,
       lastTick: now.toISOString(),
+      pausedAt: pausedAt ? pausedAt.toISOString() : null,
+      waitTimerStartedAt: waitTimerStartedAt ? waitTimerStartedAt.toISOString() : null,
       active: !shouldStop
     };
     await prisma.transaction.create({ data: { userId: appt.userId, type: 'meter_state', amount: 0, coins: 0, description: JSON.stringify(state), relatedId: appt.id } });
@@ -418,6 +483,14 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
       remainingCoins,
       remainingMinutes,
       remainingSec,
+      // Pause/Wait state
+      isPaused,
+      userPresent,
+      expertPresent,
+      waitTimerActive,
+      waitTimerRemainingSec,
+      waitTimerDuration,
+      // Status
       warning,
       shouldStop
     });
