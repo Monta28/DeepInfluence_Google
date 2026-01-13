@@ -389,6 +389,9 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
     let shouldAutoClose = false;
     let autoCloseReason = null;
 
+    // Track who disconnected for wait timer
+    let disconnectedParty = null; // 'user' or 'expert'
+
     // LOGIC: Timer only runs when BOTH participants are present
     if (bothPresent) {
       // Both present - timer runs normally, clear pause state
@@ -401,35 +404,51 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
     } else if (expertPresent && !userPresent) {
       // Expert present but user disconnected - PAUSE and start wait timer
       isPaused = true;
+      disconnectedParty = 'user';
 
       if (!waitTimerStartedAt) {
-        // Start wait timer now
         waitTimerStartedAt = now;
         pausedAt = now;
-        console.log(`⏸️ Session ${sessionId}: User disconnected, timer PAUSED at ${Math.floor(elapsedSec/60)}m${elapsedSec%60}s`);
+        console.log(`⏸️ Session ${sessionId}: USER disconnected, timer PAUSED at ${Math.floor(elapsedSec/60)}m${elapsedSec%60}s`);
         console.log(`⏳ Wait timer started: ${Math.floor(waitTimerDuration/60)}m${waitTimerDuration%60}s max`);
       }
 
-      // Calculate wait timer remaining
       const waitElapsed = Math.floor((now - waitTimerStartedAt) / 1000);
       waitTimerRemainingSec = Math.max(0, waitTimerDuration - waitElapsed);
       waitTimerActive = true;
 
       if (waitTimerRemainingSec <= 0) {
-        // Wait timer expired - auto close session
         shouldAutoClose = true;
-        autoCloseReason = 'waitTimerExpired';
-        console.log(`🛑 Session ${sessionId}: Wait timer expired! Auto-closing session.`);
+        autoCloseReason = 'userWaitTimerExpired';
+        console.log(`🛑 Session ${sessionId}: User wait timer expired! Auto-closing session.`);
       }
     } else if (!expertPresent && userPresent) {
-      // User present but expert disconnected - also pause (expert issue)
+      // User present but expert disconnected - PAUSE and start wait timer
       isPaused = true;
-      if (!pausedAt) pausedAt = now;
-      console.log(`⏸️ Session ${sessionId}: Expert disconnected, waiting for expert...`);
+      disconnectedParty = 'expert';
+
+      if (!waitTimerStartedAt) {
+        waitTimerStartedAt = now;
+        pausedAt = now;
+        console.log(`⏸️ Session ${sessionId}: EXPERT disconnected, timer PAUSED at ${Math.floor(elapsedSec/60)}m${elapsedSec%60}s`);
+        console.log(`⏳ Wait timer started: ${Math.floor(waitTimerDuration/60)}m${waitTimerDuration%60}s max`);
+      }
+
+      const waitElapsed = Math.floor((now - waitTimerStartedAt) / 1000);
+      waitTimerRemainingSec = Math.max(0, waitTimerDuration - waitElapsed);
+      waitTimerActive = true;
+
+      if (waitTimerRemainingSec <= 0) {
+        shouldAutoClose = true;
+        autoCloseReason = 'expertWaitTimerExpired';
+        console.log(`🛑 Session ${sessionId}: Expert wait timer expired! Auto-closing session.`);
+      }
     } else {
-      // Neither present - pause
+      // Neither present - pause without wait timer (both disconnected)
       isPaused = true;
       if (!pausedAt) pausedAt = now;
+      // Reset wait timer when both disconnect
+      waitTimerStartedAt = null;
     }
 
     // Calculate billing info
@@ -456,8 +475,10 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
       warning = 'critical';
     } else if (remainingMinutes <= WARNING_THRESHOLD_MIN && !isPaused) {
       warning = 'low';
-    } else if (isPaused && waitTimerActive) {
+    } else if (isPaused && waitTimerActive && disconnectedParty === 'user') {
       warning = 'userDisconnected';
+    } else if (isPaused && waitTimerActive && disconnectedParty === 'expert') {
+      warning = 'expertDisconnected';
     }
 
     const state = {
@@ -487,6 +508,7 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
       isPaused,
       userPresent,
       expertPresent,
+      disconnectedParty,
       waitTimerActive,
       waitTimerRemainingSec,
       waitTimerDuration,
