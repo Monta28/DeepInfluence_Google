@@ -76,43 +76,78 @@ function generateStreamUserToken(userId) {
 
 /**
  * @route POST /api/video/create-room
- * @desc Créer une room Stream.io pour session vidéo
+ * @desc Créer une room JaaS (Jitsi as a Service) pour session vidéo
  * @access Private
  */
 router.post('/create-room', verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.body;
-    const displayName = `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || 'User';
-    console.log(`📨 Demande création room Stream: sessionId=${sessionId}, userId=${req.user?.id}, displayName=${displayName}`);
+    const user = req.user;
+    const displayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User';
+    console.log(`📨 Demande création room JaaS: sessionId=${sessionId}, userId=${user?.id}, displayName=${displayName}`);
 
     if (!sessionId) {
       return res.status(400).json({ success: false, message: 'sessionId requis' });
     }
 
-    const callId = `deepinfluence-${sessionId}`;
-    const userToken = generateStreamUserToken(req.user.id);
-    const appointmentId = parseInt(String(sessionId).replace('session-', ''), 10);
+    const appId = process.env.JAAS_APP_ID;
+    if (!appId) {
+      return res.status(500).json({ success: false, message: 'JaaS non configuré sur le serveur (JAAS_APP_ID manquant)' });
+    }
+
+    // Vérifier si l'utilisateur est l'expert pour cette session
+    let isModerator = false;
+    let hourlyRate = 0;
+    const appointmentId = parseAppointmentId(sessionId);
 
     if (Number.isFinite(appointmentId)) {
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { expertRel: { select: { userId: true, hourlyRate: true } } }
+      });
+
+      if (appointment && appointment.expertRel) {
+        isModerator = appointment.expertRel.userId === user.id;
+        hourlyRate = appointment.expertRel.hourlyRate || 0;
+      }
+
+      // Enregistrer la room
       await prisma.videoRoom.upsert({
         where: { sessionId },
-        update: { videoSDKRoomId: callId },
-        create: { sessionId, appointmentId, videoSDKRoomId: callId }
+        update: { videoSDKRoomId: `deepinfluence-${sessionId}` },
+        create: { sessionId, appointmentId, videoSDKRoomId: `deepinfluence-${sessionId}` }
       }).catch(() => {});
     }
 
+    // Si pas de rendez-vous trouvé, vérifier si l'utilisateur est expert
+    if (!isModerator && user.userType === 'expert') {
+      isModerator = true;
+    }
+
+    const perMinute = Math.max(1, Math.ceil(hourlyRate / 60));
+    const roomName = `deepinfluence-${sessionId}`;
+
+    // Générer le token JWT JaaS
+    const token = generateJaasJwt(user, roomName, isModerator);
+
+    console.log(`📹 Room JaaS créée: user=${user.id}, room=${roomName}, moderator=${isModerator}, rate=${hourlyRate}/h (${perMinute}/min)`);
+
     return res.json({
       success: true,
-      provider: 'stream',
-      roomId: callId,
-      token: userToken,
-      apiKey: process.env.STREAM_API_KEY,
-      roomName: callId,
-      displayName,
+      provider: 'jaas',
+      token,
+      roomName,
+      roomId: roomName,
+      appId,
+      domain: '8x8.vc',
+      isModerator,
+      hourlyRate,
+      perMinute,
+      displayName
     });
   } catch (error) {
-    console.error('Erreur création room Stream:', error);
-    return res.status(500).json({ success: false, message: 'Erreur création room Stream', error: error?.message || String(error) });
+    console.error('Erreur création room JaaS:', error);
+    return res.status(500).json({ success: false, message: 'Erreur création room JaaS', error: error?.message || String(error) });
   }
 });
 
