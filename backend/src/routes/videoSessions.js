@@ -317,7 +317,7 @@ router.post('/meter/start', verifyToken, async (req, res) => {
 // Includes pause/resume logic and wait timer when user disconnects
 router.post('/meter/heartbeat', verifyToken, async (req, res) => {
   try {
-    const { sessionId } = req.body || {};
+    const { sessionId, inJitsiCall, otherParticipantInCall } = req.body || {};
     if (!sessionId) return res.status(400).json({ success: false, message: 'sessionId requis' });
     const apptId = parseAppointmentId(sessionId);
     if (!apptId) return res.status(400).json({ success: false, message: 'sessionId invalide' });
@@ -369,9 +369,41 @@ router.post('/meter/heartbeat', verifyToken, async (req, res) => {
 
     // Check presence (15 sec timeout for heartbeat)
     const HEARTBEAT_TIMEOUT = 15000;
-    const userPresent = lastHeartbeatUser && (now - lastHeartbeatUser) <= HEARTBEAT_TIMEOUT;
-    const expertPresent = lastHeartbeatExpert && (now - lastHeartbeatExpert) <= HEARTBEAT_TIMEOUT;
+    const userHeartbeatOk = lastHeartbeatUser && (now - lastHeartbeatUser) <= HEARTBEAT_TIMEOUT;
+    const expertHeartbeatOk = lastHeartbeatExpert && (now - lastHeartbeatExpert) <= HEARTBEAT_TIMEOUT;
+
+    // Déterminer la présence JITSI réelle basée sur les informations du frontend
+    // Si le participant qui envoie le heartbeat dit que l'autre n'est pas dans Jitsi,
+    // alors l'autre est considéré comme absent même s'il envoie encore des heartbeats
+    let userInJitsi = userHeartbeatOk;
+    let expertInJitsi = expertHeartbeatOk;
+
+    // Utiliser l'info Jitsi si disponible
+    if (inJitsiCall !== undefined) {
+      // Le participant qui envoie le heartbeat est dans Jitsi
+      if (isUser) {
+        userInJitsi = inJitsiCall === true;
+      } else if (isExpert) {
+        expertInJitsi = inJitsiCall === true;
+      }
+    }
+
+    if (otherParticipantInCall !== undefined) {
+      // Info sur l'autre participant (vue depuis celui qui envoie le heartbeat)
+      if (isUser) {
+        // User dit si expert est dans Jitsi
+        expertInJitsi = otherParticipantInCall === true;
+      } else if (isExpert) {
+        // Expert dit si user est dans Jitsi
+        userInJitsi = otherParticipantInCall === true;
+      }
+    }
+
+    const userPresent = userInJitsi;
+    const expertPresent = expertInJitsi;
     const bothPresent = userPresent && expertPresent;
+
+    console.log(`💓 Heartbeat ${sessionId}: isUser=${isUser}, isExpert=${isExpert}, inJitsi=${inJitsiCall}, otherInCall=${otherParticipantInCall} → user=${userPresent}, expert=${expertPresent}, both=${bothPresent}`);
 
     // Calculate appointment duration and remaining time
     const appointmentDuration = appt.duration || 30; // Default 30 min if not specified

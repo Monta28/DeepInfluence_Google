@@ -83,6 +83,8 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
   const authTokenRef = useRef<string | null>(null);
   const timerPausedRef = useRef(false); // Ref pour suivre l'état de pause actuel
   const meterStartedRef = useRef(false); // Ref pour suivre si le meter a démarré
+  const otherParticipantInCallRef = useRef(false); // Ref pour suivre si l'autre participant est dans Jitsi
+  const iAmInCallRef = useRef(false); // Ref pour suivre si je suis dans la conférence Jitsi
 
   // Fonction pour récupérer le tarif du rendez-vous
   const fetchAppointmentRate = useCallback(async () => {
@@ -200,16 +202,35 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
     if (!authTokenRef.current) return;
 
     try {
+      // Inclure l'état de présence Jitsi dans le heartbeat
       const res = await fetch(`/api/video/meter/heartbeat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authTokenRef.current}`
         },
-        body: JSON.stringify({ sessionId })
+        body: JSON.stringify({
+          sessionId,
+          // Informations de présence Jitsi
+          inJitsiCall: iAmInCallRef.current,
+          otherParticipantInCall: otherParticipantInCallRef.current
+        })
       });
 
       const data: MeterResponse = await res.json();
+
+      // Log détaillé pour debug
+      console.log('💓 Heartbeat response:', {
+        success: data.success,
+        isPaused: data.isPaused,
+        disconnectedParty: data.disconnectedParty,
+        waitTimerActive: data.waitTimerActive,
+        waitTimerRemainingSec: data.waitTimerRemainingSec,
+        userPresent: data.userPresent,
+        expertPresent: data.expertPresent,
+        warning: data.warning
+      });
+
       if (data.success) {
         // Update elapsed time
         if (data.elapsedSec !== undefined) {
@@ -222,6 +243,11 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
         setWaitTimerRemainingSec(data.waitTimerRemainingSec || 0);
         setDisconnectedParty(data.disconnectedParty || null);
         setWarning(data.warning || null);
+
+        // Log quand il y a un état de pause
+        if (data.isPaused) {
+          console.log(`🔴 PAUSED: disconnected=${data.disconnectedParty}, waitTimer=${data.waitTimerRemainingSec}s`);
+        }
 
         // Update billing info
         if (data.remainingCoins !== undefined) {
@@ -439,6 +465,10 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
         return newCount;
       });
 
+      // Un autre participant a rejoint la conférence Jitsi
+      otherParticipantInCallRef.current = true;
+      console.log('🟢 otherParticipantInCall = true');
+
       // Vérifier si c'est un modérateur (expert)
       // Note: JaaS ne fournit pas directement cette info via l'événement
       // On considère que si quelqu'un rejoint et qu'on n'est pas modérateur, c'est l'expert
@@ -475,8 +505,16 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
       // Si un participant part et qu'on n'est pas modérateur, peut-être que l'expert est parti
       // On vérifie le nombre de participants restants
       const count = api.getNumberOfParticipants();
-      if (count <= 1 && !jaasData?.isModerator) {
-        setExpertConnected(false);
+      console.log(`👥 Participants restants après départ: ${count}`);
+
+      // Vérifier si l'autre participant est encore là
+      if (count <= 1) {
+        otherParticipantInCallRef.current = false;
+        console.log('🔴 otherParticipantInCall = false (participant left)');
+
+        if (!jaasData?.isModerator) {
+          setExpertConnected(false);
+        }
       }
     });
 
@@ -489,6 +527,10 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
 
       console.log('📹 Joined conference - isModerator:', jaasData?.isModerator);
 
+      // Marquer que je suis dans la conférence Jitsi
+      iAmInCallRef.current = true;
+      console.log('🟢 iAmInCall = true');
+
       // Démarrer le compteur MAINTENANT (quand on rejoint vraiment la réunion)
       console.log('🎬 Appel de startMeter()...');
       startMeter();
@@ -497,6 +539,12 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
       const count = api.getNumberOfParticipants();
       console.log('👥 Nombre de participants:', count);
       setParticipantCount(count);
+
+      // Si il y a déjà quelqu'un d'autre dans la conférence
+      if (count > 1) {
+        otherParticipantInCallRef.current = true;
+        console.log('🟢 otherParticipantInCall = true (participant déjà présent)');
+      }
 
       // Si c'est l'expert qui rejoint, marquer comme connecté
       if (jaasData?.isModerator) {
@@ -531,6 +579,8 @@ export default function JitsiSession({ sessionId }: JitsiSessionProps) {
 
     api.addEventListener('videoConferenceLeft', () => {
       console.log('📴 Conference left');
+      iAmInCallRef.current = false;
+      console.log('🔴 iAmInCall = false (conference left)');
       stopMeter();
       router.push('/dashboard');
     });
