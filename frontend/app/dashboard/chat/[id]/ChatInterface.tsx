@@ -32,11 +32,16 @@ interface Message {
   content: string;
   timestamp: string;
   senderId: number;
-  conversationId: number; // Essentiel pour le temps réel
+  conversationId: number;
   sender: {
     avatar: string;
   };
   isRead?: boolean;
+  messageType?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentSize?: number;
+  duration?: number;
 }
 
 export default function ChatInterface() {
