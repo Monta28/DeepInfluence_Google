@@ -231,6 +231,77 @@ function parseAppointmentId(sessionId) {
   return m ? parseInt(m[1], 10) : NaN;
 }
 
+/**
+ * @route POST /api/video/formation-token
+ * @desc Générer un token JWT JaaS pour rejoindre une formation
+ * @access Private (inscrit à la formation ou propriétaire)
+ */
+router.post('/formation-token', verifyToken, async (req, res) => {
+  try {
+    const { formationId } = req.body;
+    const user = req.user;
+
+    if (!formationId) {
+      return res.status(400).json({ success: false, message: 'formationId requis' });
+    }
+
+    const appId = process.env.JAAS_APP_ID;
+    if (!appId) {
+      return res.status(500).json({ success: false, message: 'JaaS non configuré sur le serveur' });
+    }
+
+    // Récupérer la formation avec ses enrollments
+    const formation = await prisma.formation.findUnique({
+      where: { id: parseInt(formationId) },
+      include: {
+        expert: { select: { userId: true } },
+        enrollments: { select: { userId: true } }
+      }
+    });
+
+    if (!formation) {
+      return res.status(404).json({ success: false, message: 'Formation non trouvée' });
+    }
+
+    // Vérifier si l'utilisateur est inscrit ou est le propriétaire
+    const isOwner = formation.expert && formation.expert.userId === user.id;
+    const isEnrolled = formation.enrollments.some(e => e.userId === user.id);
+
+    if (!isOwner && !isEnrolled) {
+      return res.status(403).json({ success: false, message: 'Vous devez être inscrit à cette formation pour accéder à la vidéoconférence' });
+    }
+
+    // Le propriétaire (expert) est modérateur
+    const isModerator = isOwner;
+
+    // Utiliser le roomId stocké dans videoConferenceLink
+    const roomName = `deepinfluence-${formation.videoConferenceLink || 'formation-' + formationId}`;
+
+    // Générer le token JWT avec le statut modérateur
+    const token = generateJaasJwt(user, roomName, isModerator);
+
+    console.log(`📹 Token JaaS formation généré pour user=${user.id}, formation=${formationId}, room=${roomName}, moderator=${isModerator}`);
+
+    return res.json({
+      success: true,
+      provider: 'jaas',
+      token,
+      roomName,
+      appId,
+      domain: '8x8.vc',
+      isModerator,
+      formationTitle: formation.title
+    });
+  } catch (error) {
+    console.error('Erreur génération token JaaS formation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur génération token JaaS',
+      error: error?.message || String(error)
+    });
+  }
+});
+
 // Get chat history for a session
 router.get('/chat-history/:sessionId', verifyToken, async (req, res) => {
   try {

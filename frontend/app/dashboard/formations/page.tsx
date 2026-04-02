@@ -35,6 +35,8 @@ export default function FormationsPage() {
     const [activeTab, setActiveTab] = useState('all');
     const [expertTab, setExpertTab] = useState<'created'|'enrolled'>('created');
     const [searchTerm, setSearchTerm] = useState('');
+    const [deleteModalFormationId, setDeleteModalFormationId] = useState<number | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const { user, isLoading: isAuthLoading } = useAuth();
     const socket = useSocket();
@@ -141,6 +143,21 @@ export default function FormationsPage() {
         };
     }, [socket, user]);
     
+    const handleDeleteFormation = async () => {
+        if (!deleteModalFormationId) return;
+        setDeleting(true);
+        try {
+            await ApiService.deleteFormation(deleteModalFormationId);
+            setDeleteModalFormationId(null);
+            loadPageData();
+        } catch (err) {
+            console.error('Error deleting formation:', err);
+            alert('Erreur lors de la suppression de la formation');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     const sourceList = user?.userType === 'expert' ? (expertTab === 'created' ? formations : enrolledFormations) : formations;
     const filteredFormations = sourceList.filter((f: any) => {
         const matchesFilter = activeTab === 'all' || 
@@ -213,11 +230,64 @@ export default function FormationsPage() {
                     {loading ? <p>Chargement...</p> : error ? <p className="text-red-500">{error}</p> : (
                         filteredFormations.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredFormations.map((f: any) => <FormationCard key={f.id} formation={f} ownerActions={expertTab === 'created'} />)}
+                                {filteredFormations.map((f: any) => (
+                                    <div key={f.id} className="relative group/card">
+                                        <FormationCard formation={f} ownerActions={expertTab === 'created'} />
+                                        {expertTab === 'created' && (
+                                            <div className="absolute top-2 right-14 z-10 flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                                                <Link
+                                                    href={`/dashboard/formations/create?edit=${f.id}`}
+                                                    className="p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                                                    title="Modifier"
+                                                >
+                                                    <i className="ri-pencil-line text-blue-600 dark:text-blue-400"></i>
+                                                </Link>
+                                                <button
+                                                    onClick={() => setDeleteModalFormationId(f.id)}
+                                                    className="p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                                    title="Supprimer"
+                                                >
+                                                    <i className="ri-delete-bin-line text-red-600 dark:text-red-400"></i>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         ) : (
                             <div className="text-center py-16"><p className="text-gray-500">Aucune formation ne correspond à vos filtres.</p></div>
                         )
+                    )}
+
+                    {/* Modal de confirmation de suppression */}
+                    {deleteModalFormationId && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+                                <div className="flex justify-center mb-4">
+                                    <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                                        <i className="ri-delete-bin-line text-2xl text-red-600 dark:text-red-400"></i>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Confirmer la suppression</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-center mb-6">Cette action est irréversible. La formation sera définitivement supprimée.</p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setDeleteModalFormationId(null)}
+                                        disabled={deleting}
+                                        className="flex-1 py-2.5 px-4 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteFormation}
+                                        disabled={deleting}
+                                        className="flex-1 py-2.5 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
+                                    >
+                                        {deleting ? 'Suppression...' : 'Supprimer'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </main>
             </div>

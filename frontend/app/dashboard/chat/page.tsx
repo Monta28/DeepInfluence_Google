@@ -25,7 +25,7 @@ interface Conversation {
   lastMessageTime: string;
   participants: Participant[];
   // Ajoutons des champs pour les filtres (à implémenter côté backend si besoin)
-  unreadCount?: number; 
+  unreadCount?: number;
   isOnline?: boolean;
   responseMinutes?: number | null;
 }
@@ -36,7 +36,7 @@ export default function ChatListPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '') : '');
@@ -106,7 +106,7 @@ export default function ChatListPage() {
       socket.off('newMessage', handleNewMessage);
     };
   }, [socket]);
-  
+
   // Logique de filtrage et de recherche
   const filteredChats = useMemo(() => {
     let filtered = conversations;
@@ -118,7 +118,7 @@ export default function ChatListPage() {
     } else if (activeFilter === 'priority') {
         filtered = conversations.filter((c: any) => c.priority === 'high');
     }
-    
+
     if (!searchQuery) {
         return filtered;
     }
@@ -155,7 +155,7 @@ export default function ChatListPage() {
     }
     return `~ ${avg} min`;
   }, [conversations, user]);
-  
+
   const filters = [
     { id: 'all', label: 'Toutes', count: conversations.length },
     { id: 'unread', label: 'Non lues', count: unreadCount },
@@ -164,97 +164,97 @@ export default function ChatListPage() {
   ];
 
   if (loading) {
-    return <div className="text-center p-8">Chargement...</div>
+    return <div className="text-center p-8 text-gray-900 dark:text-white">Chargement...</div>
   }
-  
+
   if (error) {
     return <div className="text-center p-8 text-red-500">Erreur : {error}</div>
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <AppHeader />
-      
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
             Messagerie
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-gray-600 dark:text-gray-300">
             Communiquez avec vos experts en temps réel
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {/* Total Conversations */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50 dark:border-gray-700/50">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
                 <i className="ri-message-2-line text-white text-xl"></i>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">{conversations.length}</h3>
-                <p className="text-gray-600 text-sm">Conversations</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{conversations.length}</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Conversations</p>
               </div>
             </div>
           </div>
-          
+
           {/* Experts en ligne */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50 dark:border-gray-700/50">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
                 <i className="ri-user-line text-white text-xl"></i>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">{onlineExpertsCount}</h3>
-                <p className="text-gray-600 text-sm">Experts en ligne</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{onlineExpertsCount}</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Experts en ligne</p>
               </div>
             </div>
           </div>
-          
+
           {/* Messages non lus */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50 dark:border-gray-700/50">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
                 <i className="ri-notification-3-line text-white text-xl"></i>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">{unreadCount}</h3>
-                <p className="text-gray-600 text-sm">Messages non lus</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{unreadCount}</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Messages non lus</p>
               </div>
             </div>
           </div>
-          
+
           {/* Temps de réponse (moyenne des experts contactés) */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-white/50 dark:border-gray-700/50">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center">
                 <i className="ri-time-line text-white text-xl"></i>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">{averageResponseLabel}</h3>
-                <p className="text-gray-600 text-sm">Temps de réponse</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{averageResponseLabel}</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Temps de réponse</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-sm border border-white/50 overflow-hidden">
-          <div className="p-8 border-b border-gray-200/50">
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl shadow-sm border border-white/50 dark:border-gray-700/50 overflow-hidden">
+          <div className="p-8 border-b border-gray-200/50 dark:border-gray-700/50">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div className="relative flex-1 max-w-lg">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <i className="ri-search-line text-gray-400 text-xl"></i>
+                  <i className="ri-search-line text-gray-400 dark:text-gray-500 text-xl"></i>
                 </div>
                 <input
                   type="text"
                   placeholder="Rechercher une conversation..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                 />
               </div>
-              
+
               <div className="flex flex-wrap gap-2">
                 {filters.map((filter) => (
                   <button
@@ -263,7 +263,7 @@ export default function ChatListPage() {
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap ${
                       activeFilter === filter.id
                         ? 'bg-blue-600 text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
                     {filter.label}
@@ -276,7 +276,7 @@ export default function ChatListPage() {
             </div>
           </div>
 
-          <div className="divide-y divide-gray-200/50">
+          <div className="divide-y divide-gray-200/50 dark:divide-gray-700/50">
             {filteredChats.map((chat) => {
                 const participant = chat.participants.find((p: any) => p.user.id !== user?.id)?.user;
                 if (!participant) return null;
@@ -285,7 +285,7 @@ export default function ChatListPage() {
                 <Link
                   key={chat.id}
                   href={`/dashboard/chat/${chat.id}`}
-                  className="block hover:bg-blue-50/50 transition-all duration-300 group"
+                  className="block hover:bg-blue-50/50 dark:hover:bg-gray-700/50 transition-all duration-300 group"
                 >
                   <div className="p-6">
                     <div className="flex items-center space-x-4">
@@ -312,17 +312,17 @@ export default function ChatListPage() {
                           );
                         })()}
                          {participant.isOnline && (
-                           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-3 border-white shadow-lg animate-pulse"></div>
+                           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-3 border-white dark:border-gray-800 shadow-lg animate-pulse"></div>
                          )}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-bold text-gray-900 truncate text-lg group-hover:text-blue-600 transition-colors">
+                          <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {participant.firstName} {participant.lastName}
                           </h3>
                           <div className="flex items-center space-x-3">
-                            <span className="text-sm text-gray-500 font-medium">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                               {new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {(chat.unreadCount || 0) > 0 && (
@@ -332,8 +332,8 @@ export default function ChatListPage() {
                             )}
                           </div>
                         </div>
-                        
-                        <p className="text-gray-600 truncate text-base">
+
+                        <p className="text-gray-600 dark:text-gray-300 truncate text-base">
                           {chat.lastMessage}
                         </p>
                       </div>
@@ -346,10 +346,10 @@ export default function ChatListPage() {
 
           {filteredChats.length === 0 && (
             <div className="text-center py-16">
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
                 Aucune conversation trouvée
               </h3>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">
                 Commencez une conversation avec un expert pour démarrer.
               </p>
               <Link href="/experts" className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-semibold hover:bg-blue-700 transition-colors whitespace-nowrap">

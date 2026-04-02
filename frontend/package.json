@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -12,8 +13,10 @@
     "@react-google-maps/api": "^2.19.3",
     "@stream-io/video-react-sdk": "^1.23.1",
     "next": "^14.2.33",
+    "next-themes": "^0.4.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.6.0",
     "recharts": "^3.0.2",
     "socket.io-client": "^4.8.1"
   },

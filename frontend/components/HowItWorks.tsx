@@ -29,13 +29,13 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section className="py-24 bg-gray-50">
+    <section className="py-24 bg-gray-50 dark:bg-gray-800 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Comment ça marche ?
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
             Quatre étapes simples pour accéder à l'expertise dont vous avez besoin.
           </p>
         </div>
@@ -47,15 +47,15 @@ export default function HowItWorks() {
                 <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className={`${step.icon} text-white text-2xl`}></i>
                 </div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-blue-600 font-bold text-sm">{step.step}</span>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">{step.step}</span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gray-300 transform -translate-y-1/2"></div>
+                  <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gray-300 dark:bg-gray-600 transform -translate-y-1/2"></div>
                 )}
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">{step.title}</h3>
-              <p className="text-gray-600 leading-relaxed">{step.description}</p>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{step.title}</h3>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{step.description}</p>
             </div>
           ))}
         </div>

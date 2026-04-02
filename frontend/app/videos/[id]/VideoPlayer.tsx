@@ -38,6 +38,8 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
   const [video, setVideo] = useState<any | null>(null);
   const [isFav, setIsFav] = useState<boolean>(false);
   const [currentLikes, setCurrentLikes] = useState<number>(0);
+  const [showInsufficientModal, setShowInsufficientModal] = useState(false);
+  const [insufficientData, setInsufficientData] = useState<{ currentBalance: number; requiredCoins: number } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -95,12 +97,18 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
     }
     try {
       const r = await ApiService.purchaseVideo(parseInt(videoId));
+      if (r.data?.insufficientCoins) {
+        setInsufficientData({
+          currentBalance: r.data.currentBalance || 0,
+          requiredCoins: r.data.requiredCoins || 0,
+        });
+        setShowInsufficientModal(true);
+        return;
+      }
       if (r.success) {
         addToast('Vidéo débloquée', 'success');
-        // Reload video state
         const v = await ApiService.getVideoById(parseInt(videoId));
         if (v.success && v.data) setVideo(v.data);
-        // Refresh coins in header
         try {
           const me = await ApiService.getMe();
           if (me.success && me.data) updateUser({ coins: me.data.coins });
@@ -370,7 +378,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
   // Loading and not-found guards
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -378,7 +386,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
 
   if (error || !video) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-600 dark:text-gray-300">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-gray-600 dark:text-gray-300">
         {error || 'Vidéo introuvable'}
       </div>
     );
@@ -392,7 +400,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
     const locked = !(video.isUnlocked || video.type === 'free' || video.price === 0);
     if (locked) {
       return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <AppHeader />
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="bg-black rounded-lg overflow-hidden shadow-lg mb-6">
@@ -406,23 +414,29 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                       Il vous manque <span className="font-semibold">{Math.max(0, Number(video.price || 0) - Number(user.coins || 0))}</span> coin(s).
                     </div>
                   )}
-                  <div className="flex items-center justify-center gap-3">
+                  <div className="flex flex-col items-center gap-3 w-full max-w-sm mx-auto">
                     <button
                       onClick={handlePurchase}
                       disabled={!!user && Number(user.coins || 0) < Number(video.price || 0)}
-                      className={`px-6 py-3 rounded-lg text-white ${!!user && Number(user.coins || 0) < Number(video.price || 0) ? 'bg-pink-300 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'}`}
+                      className={`w-full px-6 py-3 rounded-lg text-white font-medium ${!!user && Number(user.coins || 0) < Number(video.price || 0) ? 'bg-pink-300 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'}`}
                     >
-                      Acheter pour {video.price} coins
+                      Payer {video.price} coins
                     </button>
-                    <a href="/dashboard/coins" className="px-4 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600">Acheter des coins</a>
+
+                    <button
+                      onClick={() => { window.location.href = '/dashboard/coins'; }}
+                      className="w-full px-6 py-3 rounded-lg bg-purple-600/80 hover:bg-purple-700 text-white font-medium text-sm"
+                    >
+                      <i className="ri-shopping-cart-line mr-1"></i> Pas assez de coins ? Acheter des coins
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{video.title}</h1>
-              <div className="text-gray-600 mb-4">Catégorie: {video.category}</div>
-              <p className="text-gray-700">{video.description}</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{video.title}</h1>
+              <div className="text-gray-600 dark:text-gray-300 mb-4">Catégorie: {video.category}</div>
+              <p className="text-gray-700 dark:text-gray-200">{video.description}</p>
             </div>
           </div>
         </div>
@@ -441,9 +455,9 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(expertName)}&size=60`;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppHeader />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Lecteur vidéo principal */}
@@ -559,23 +573,23 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
             </div>
 
             {/* Informations de la vidéo */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mt-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{video.title}</h1>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{video.title}</h1>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300 mb-4">
                     <span>{video.views?.toLocaleString?.() || video.views || 0} vues</span>
                     <span>•</span>
                     <span>{video.publishedAt ? new Date(video.publishedAt).toLocaleDateString('fr-FR') : ''}</span>
                     <span>•</span>
                     {video.price > 0 ? (
                       (video.isUnlocked ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">Débloquée</span>
+                        <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full font-medium">Débloquée</span>
                       ) : (
-                        <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">Premium</span>
+                        <span className="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded-full font-medium">Premium</span>
                       ))
                     ) : (
-                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Gratuit</span>
+                      <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-2 py-1 rounded-full font-medium">Gratuit</span>
                     )}
                   </div>
                 </div>
@@ -583,7 +597,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleToggleFavorite}
-                    className={`w-8 h-8 inline-flex items-center justify-center rounded-full transition-all ${isFav ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-50'}`}
+                    className={`w-8 h-8 inline-flex items-center justify-center rounded-full transition-all ${isFav ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30'}`}
                     aria-label={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                   >
                     <i className={`ri-heart-${isFav ? 'fill' : 'line'} text-sm leading-none`}></i>
@@ -591,9 +605,9 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                   <button
                     onClick={handleLike}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                      isLiked 
-                        ? 'bg-blue-100 text-blue-600' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      isLiked
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
                     <i className={`ri-thumb-up-${isLiked ? 'fill' : 'line'}`}></i>
@@ -602,7 +616,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                   
                   <button
                     onClick={handleShare}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
                     <i className="ri-share-line"></i>
                     <span>Partager</span>
@@ -610,12 +624,12 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                 </div>
               </div>
 
-              <div className="border-t pt-4">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                 <div className="flex items-center space-x-4 mb-4">
                   <img src={expertImage} alt={expertName} className="w-12 h-12 rounded-full object-cover" />
                   <div>
-                    <h3 className="font-semibold text-gray-900">{expertName}</h3>
-                    <p className="text-sm text-gray-600">Expert vérifié</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{expertName}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Expert vérifié</p>
                   </div>
                   {expertId && (
                     <Link
@@ -635,27 +649,27 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                   )}
                 </div>
                 
-                <p className="text-gray-700 leading-relaxed">{video.description}</p>
+                <p className="text-gray-700 dark:text-gray-200 leading-relaxed">{video.description}</p>
               </div>
             </div>
 
             {/* Transcription */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Transcription</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mt-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Transcription</h2>
               <div className="space-y-3 max-h-64 overflow-y-auto">
                 {transcript.map((item: any, index: number) => (
                   <div key={index} className="flex items-start space-x-3">
                     <span className="text-blue-600 font-mono text-sm min-w-16">{item.time}</span>
-                    <p className="text-gray-700">{item.text}</p>
+                    <p className="text-gray-700 dark:text-gray-200">{item.text}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Notes personnelles */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mt-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Notes personnelles</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Notes personnelles</h2>
                 <button
                   onClick={() => setShowNotes(!showNotes)}
                   className="text-blue-600 hover:text-blue-700 transition-colors"
@@ -669,7 +683,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ajoutez vos notes sur cette vidéo..."
-                  className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
                 />
               )}
             </div>
@@ -678,8 +692,8 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Vidéos similaires */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Vidéos similaires</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Vidéos similaires</h2>
               <div className="space-y-4">
                 {relatedVideos.map((relatedVideo) => (
                   <Link
@@ -699,11 +713,11 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                         </div>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                        <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors line-clamp-2">
                           {relatedVideo.title}
                         </h3>
-                        <p className="text-sm text-gray-600 mt-1">{relatedVideo.expert}</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{relatedVideo.expert}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           {relatedVideo.views.toLocaleString()} vues
                         </p>
                       </div>
@@ -714,8 +728,8 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
             </div>
 
             {/* Actions rapides */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Actions rapides</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Actions rapides</h2>
               <div className="space-y-3">
                 {expertId && (
                   <Link
@@ -748,18 +762,63 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
         </div>
       </div>
 
+      {/* Modal solde insuffisant */}
+      {showInsufficientModal && insufficientData && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowInsufficientModal(false)}></div>
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                <i className="ri-coin-line text-3xl text-orange-500"></i>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">Solde insuffisant</h3>
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 mb-6 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Votre solde</span>
+                <span className="font-semibold text-gray-900 dark:text-white">{insufficientData.currentBalance} coins</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Prix de la vidéo</span>
+                <span className="font-semibold text-orange-600">{insufficientData.requiredCoins} coins</span>
+              </div>
+              <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-red-600 dark:text-red-400">Il vous manque</span>
+                  <span className="font-bold text-red-600 dark:text-red-400">{insufficientData.requiredCoins - insufficientData.currentBalance} coins</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => { setShowInsufficientModal(false); window.location.href = '/dashboard/coins'; }}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-xl font-semibold hover:from-yellow-600 hover:to-orange-600 transition flex items-center justify-center gap-2"
+              >
+                <i className="ri-shopping-cart-line"></i> Acheter des coins
+              </button>
+              <button
+                onClick={() => setShowInsufficientModal(false)}
+                className="w-full py-3 rounded-xl font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de partage */}
       {showShareModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Partager cette vidéo
             </h3>
             
             <div className="space-y-3">
               <button
                 onClick={() => copyToClipboard(window.location.href)}
-                className="w-full flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white"
               >
                 <i className="ri-link text-blue-600"></i>
                 <span>Copier le lien</span>
@@ -767,7 +826,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
               
               <button
                 onClick={() => copyToClipboard(`Regardez cette vidéo : ${video.title} - ${window.location.href}`)}
-                className="w-full flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white"
               >
                 <i className="ri-share-line text-green-600"></i>
                 <span>Partager le texte</span>
@@ -775,7 +834,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
               
               <button
                 onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(video.title)}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
-                className="w-full flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white"
               >
                 <i className="ri-twitter-line text-blue-400"></i>
                 <span>Partager sur Twitter</span>
@@ -783,7 +842,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
               
               <button
                 onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`, '_blank')}
-                className="w-full flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white"
               >
                 <i className="ri-facebook-line text-blue-600"></i>
                 <span>Partager sur Facebook</span>
@@ -792,7 +851,7 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
             
             <button
               onClick={() => setShowShareModal(false)}
-              className="w-full mt-4 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors whitespace-nowrap"
+              className="w-full mt-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors whitespace-nowrap"
             >
               Fermer
             </button>

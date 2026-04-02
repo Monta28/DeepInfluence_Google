@@ -154,11 +154,11 @@ export default function ExpertsPage() {
         <div className="mb-12">
             <div className="relative max-w-lg mx-auto mb-4">
                 <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher une vidéo..." className="w-full pl-12 pr-4 py-3 border rounded-full"/>
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher une vidéo..." className="w-full pl-12 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"/>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
                 {categories.map((category) => (
-                    <button key={category.id} onClick={() => setSelectedCategory(category.id)} className={`px-4 py-2 rounded-full text-sm font-medium ${selectedCategory === category.id ? 'bg-purple-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                    <button key={category.id} onClick={() => setSelectedCategory(category.id)} className={`px-4 py-2 rounded-full text-sm font-medium ${selectedCategory === category.id ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
                         {category.name}
                     </button>
                 ))}
@@ -175,8 +175,8 @@ export default function ExpertsPage() {
         
         {!loading && experts.length === 0 && error && (
             <div className="text-center py-16">
-                <h3 className="text-2xl font-bold">Aucun expert trouvé</h3>
-                <p className="text-gray-600 mt-2">Essayez d'ajuster vos filtres de recherche.</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Aucun expert trouvé</h3>
+                <p className="text-gray-600 dark:text-gray-300 mt-2">Essayez d'ajuster vos filtres de recherche.</p>
             </div>
         )}
         

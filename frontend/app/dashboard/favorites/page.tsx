@@ -18,32 +18,32 @@ export default function FavoritesPage() {
   // Les listes sont chargées via l'API; aucun mock local ici
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppHeader />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Mes Favoris</h1>
-            <p className="text-gray-600 mt-2">Retrouvez vos experts, formations et vidéos préférés</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mes Favoris</h1>
+            <p className="text-gray-600 dark:text-gray-300 mt-2">Retrouvez vos experts, formations et vidéos préférés</p>
           </div>
           <div className="flex items-center space-x-2">
             <i className="ri-heart-fill text-red-500 text-2xl"></i>
-            <span className="text-lg font-semibold text-gray-900">
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">
               {favoriteExperts.length + favoriteFormations.length + favoriteVideos.length}
             </span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border">
-          <div className="border-b p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="border-b border-gray-200 dark:border-gray-700 p-6">
             <div className="flex space-x-1">
               <button
                 onClick={() => setActiveTab('experts')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   activeTab === 'experts'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 Experts ({favoriteExperts.length})
@@ -53,7 +53,7 @@ export default function FavoritesPage() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   activeTab === 'formations'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 Formations ({favoriteFormations.length})
@@ -63,7 +63,7 @@ export default function FavoritesPage() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   activeTab === 'videos'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 Vidéos ({favoriteVideos.length})
@@ -82,11 +82,11 @@ export default function FavoritesPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <i className="ri-heart-line text-2xl text-gray-400"></i>
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <i className="ri-heart-line text-2xl text-gray-400 dark:text-gray-500"></i>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun expert favori</h3>
-                    <p className="text-gray-500">Commencez à suivre vos experts préférés</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Aucun expert favori</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Commencez à suivre vos experts préférés</p>
                   </div>
                 )}
               </div>
@@ -102,11 +102,11 @@ export default function FavoritesPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <i className="ri-heart-line text-2xl text-gray-400"></i>
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <i className="ri-heart-line text-2xl text-gray-400 dark:text-gray-500"></i>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune formation favorite</h3>
-                    <p className="text-gray-500">Sauvegardez vos formations préférées</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Aucune formation favorite</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Sauvegardez vos formations préférées</p>
                   </div>
                 )}
               </div>
@@ -122,11 +122,11 @@ export default function FavoritesPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <i className="ri-heart-line text-2xl text-gray-400"></i>
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <i className="ri-heart-line text-2xl text-gray-400 dark:text-gray-500"></i>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune vidéo likée</h3>
-                    <p className="text-gray-500">Likez des vidéos pour les retrouver ici</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Aucune vidéo likée</h3>
+                    <p className="text-gray-500 dark:text-gray-400">Likez des vidéos pour les retrouver ici</p>
                   </div>
                 )}
               </div>

@@ -161,6 +161,106 @@ class ApiService {
     return response.json();
   }
 
+  private static toMergedHeaders(...headersList: Array<HeadersInit | undefined>): Record<string, string> {
+    const merged: Record<string, string> = {};
+
+    const appendHeaders = (headers?: HeadersInit) => {
+      if (!headers) return;
+
+      if (headers instanceof Headers) {
+        headers.forEach((value, key) => {
+          merged[key] = value;
+        });
+        return;
+      }
+
+      if (Array.isArray(headers)) {
+        headers.forEach(([key, value]) => {
+          merged[key] = value;
+        });
+        return;
+      }
+
+      Object.entries(headers).forEach(([key, value]) => {
+        if (value !== undefined) {
+          merged[key] = String(value);
+        }
+      });
+    };
+
+    headersList.forEach(appendHeaders);
+    return merged;
+  }
+
+  private static buildUrl(endpoint: string, params?: Record<string, any>): string {
+    const base = API_BASE_URL.replace(/\/$/, '');
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = endpoint.startsWith('http') ? endpoint : `${base}${normalizedEndpoint}`;
+
+    if (!params) return url;
+
+    const search = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        search.append(key, String(value));
+      }
+    });
+
+    const query = search.toString();
+    if (!query) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}${query}`;
+  }
+
+  // Axios-like compatibility helpers for legacy pages
+  static async get(endpoint: string, config?: { params?: Record<string, any>; headers?: HeadersInit; cache?: RequestCache }) {
+    const url = this.buildUrl(endpoint, config?.params);
+    const headers = this.toMergedHeaders(this.getAuthHeaders(), config?.headers);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      ...(config?.cache ? { cache: config.cache } : {})
+    });
+    return { data: await this.handleResponse(response) };
+  }
+
+  static async post(endpoint: string, data?: any, config?: { params?: Record<string, any>; headers?: HeadersInit }) {
+    const url = this.buildUrl(endpoint, config?.params);
+    const headers = this.toMergedHeaders(this.getAuthHeaders(), config?.headers);
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+    if (isFormData) {
+      delete headers['Content-Type'];
+      delete headers['content-type'];
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: isFormData ? data : JSON.stringify(data ?? {})
+    });
+    return { data: await this.handleResponse(response) };
+  }
+
+  static async put(endpoint: string, data?: any, config?: { params?: Record<string, any>; headers?: HeadersInit }) {
+    const url = this.buildUrl(endpoint, config?.params);
+    const headers = this.toMergedHeaders(this.getAuthHeaders(), config?.headers);
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data ?? {})
+    });
+    return { data: await this.handleResponse(response) };
+  }
+
+  static async delete(endpoint: string, config?: { params?: Record<string, any>; headers?: HeadersInit }) {
+    const url = this.buildUrl(endpoint, config?.params);
+    const headers = this.toMergedHeaders(this.getAuthHeaders(), config?.headers);
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers
+    });
+    return { data: await this.handleResponse(response) };
+  }
+
   // Authentification
   static async login(email: string, password: string) {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -177,11 +277,71 @@ class ApiService {
     email: string;
     password: string;
     userType?: string;
+    referralCode?: string;
   }) {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
+    });
+    return this.handleResponse(response);
+  }
+
+  static async forgotPassword(email: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    return this.handleResponse(response);
+  }
+
+  static async resetPassword(token: string, newPassword: string) {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+    return this.handleResponse(response);
+  }
+
+  // Referral system
+  static async generateReferralCode() {
+    const response = await fetch(`${API_BASE_URL}/referrals/generate-code`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getReferralStats() {
+    const response = await fetch(`${API_BASE_URL}/referrals/stats`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getMyReferrals() {
+    const response = await fetch(`${API_BASE_URL}/referrals/my-referrals`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Formation CRUD
+  static async updateFormation(id: number, data: any) {
+    const response = await fetch(`${API_BASE_URL}/formations/${id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  static async deleteFormation(id: number) {
+    const response = await fetch(`${API_BASE_URL}/formations/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
   }
@@ -270,6 +430,30 @@ class ApiService {
 
   static async getFollowingExperts() {
     const response = await fetch(`${API_BASE_URL}/experts/following`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Expert Availability
+  static async getMyAvailability(): Promise<{ success: boolean, data?: { availableDays: number[], availableTimeSlots: { start: string, end: string }[], vacationDays: string[], appointmentInterval: number }, message?: string }> {
+    const response = await fetch(`${API_BASE_URL}/experts/availability`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async updateMyAvailability(availability: { availableDays?: number[], availableTimeSlots?: { start: string, end: string }[], vacationDays?: string[], appointmentInterval?: number }): Promise<{ success: boolean, data?: any, message?: string }> {
+    const response = await fetch(`${API_BASE_URL}/experts/availability`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(availability)
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getExpertAvailability(expertId: number): Promise<{ success: boolean, data?: { availableDays: number[], availableTimeSlots: { start: string, end: string }[], vacationDays: string[], appointmentInterval: number, timeSlots: string[] }, message?: string }> {
+    const response = await fetch(`${API_BASE_URL}/experts/${expertId}/availability`, {
       headers: this.getAuthHeaders()
     });
     return this.handleResponse(response);
@@ -461,8 +645,12 @@ class ApiService {
   static async createVideo(payload: {
     title: string;
     duration: string | number;
-    type: 'free' | 'premium';
-    price: number | string;
+    type?: 'free' | 'premium';
+    videoType?: 'NORMAL' | 'REEL';
+    accessType?: 'FREE' | 'PAID';
+    orientation?: 'LANDSCAPE' | 'PORTRAIT';
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    price?: number | string;
     category: string;
     thumbnail?: string;
     description: string;
@@ -701,11 +889,11 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  static async sendMessage(conversationId: number, receiverId: number, content: string): Promise<{ success: boolean, data?: any, message?: string }> {
+  static async sendMessage(conversationId: number, receiverId: number, content: string, extra?: { messageType?: string; attachmentUrl?: string; attachmentName?: string; attachmentSize?: number; duration?: number }): Promise<{ success: boolean, data?: any, message?: string }> {
     const response = await fetch(`${API_BASE_URL}/messages/${conversationId}`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
-      body: JSON.stringify({ content, receiverId }), // Assurez-vous d'envoyer receiverId ici aussi
+      body: JSON.stringify({ content, receiverId, ...extra }),
     });
     return this.handleResponse(response);
   }
@@ -971,6 +1159,401 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // ==========================================
+  // PHASE 2 - NOUVELLES FONCTIONNALITÉS
+  // ==========================================
+
+  // Admin Payouts
+  static async adminListPayouts(params?: { status?: string; period?: string; page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.period) searchParams.append('period', params.period);
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+
+    const response = await fetch(`${API_BASE_URL}/admin/payouts?${searchParams}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async adminProcessPayout(payoutId: number, data: { notes?: string }) {
+    const response = await fetch(`${API_BASE_URL}/admin/payouts/${payoutId}/process`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  // Expert Schedule Exceptions
+  static async createScheduleException(data: { date: string; type: string; customSlots?: any; reason?: string }) {
+    const response = await fetch(`${API_BASE_URL}/experts/schedule-exception`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  static async listScheduleExceptions(params?: { startDate?: string; endDate?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.startDate) searchParams.append('startDate', params.startDate);
+    if (params?.endDate) searchParams.append('endDate', params.endDate);
+
+    const query = searchParams.toString();
+    const url = query
+      ? `${API_BASE_URL}/experts/schedule-exceptions?${query}`
+      : `${API_BASE_URL}/experts/schedule-exceptions`;
+
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async deleteScheduleException(exceptionId: number) {
+    const response = await fetch(`${API_BASE_URL}/experts/schedule-exception/${exceptionId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Quiz Submission
+  static async submitQuiz(lessonId: number, answers: Record<string, string[]>) {
+    const response = await fetch(`${API_BASE_URL}/courses/lessons/${lessonId}/quiz-submit`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ answers })
+    });
+    return this.handleResponse(response);
+  }
+
+  // Enrollments
+  static async getMyEnrollments(params?: { status?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append('status', params.status);
+
+    const query = searchParams.toString();
+    const url = query
+      ? `${API_BASE_URL}/courses/enrollments/my?${query}`
+      : `${API_BASE_URL}/courses/enrollments/my`;
+
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Certificate Generation
+  static async generateCertificate(courseId: number) {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}/certificate`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // ==========================================
+  // COURSES (PHASE 2)
+  // ==========================================
+
+  // Create Course (Expert only)
+  static async createCourse(data: any) {
+    const response = await fetch(`${API_BASE_URL}/courses`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  // Get Expert's Courses
+  static async getExpertCourses(params?: { page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+
+    const query = searchParams.toString();
+    const url = query
+      ? `${API_BASE_URL}/courses/my?${query}`
+      : `${API_BASE_URL}/courses/my`;
+
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Get Enrolled Courses
+  static async getEnrolledCourses(params?: { status?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append('status', params.status);
+
+    const query = searchParams.toString();
+    const url = query
+      ? `${API_BASE_URL}/courses/enrollments/my?${query}`
+      : `${API_BASE_URL}/courses/enrollments/my`;
+
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Update Course
+  static async updateCourse(courseId: number, data: any) {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  // Delete Course
+  static async deleteCourse(courseId: number) {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Get Single Course
+  static async getCourse(courseId: number) {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Enroll in a Course
+  static async enrollInCourse(courseId: number) {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}/enroll`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Get All Courses (Public)
+  static async getCourses(params?: { category?: string; level?: string; search?: string; page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.category) searchParams.append('category', params.category);
+    if (params?.level) searchParams.append('level', params.level);
+    if (params?.search) searchParams.append('search', params.search);
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+
+    const query = searchParams.toString();
+    const url = query
+      ? `${API_BASE_URL}/courses?${query}`
+      : `${API_BASE_URL}/courses`;
+
+    const response = await fetch(url);
+    return this.handleResponse(response);
+  }
+
+  // Upload Video File
+  static async uploadVideo(file: File): Promise<{ success: boolean, data?: { url: string; filename: string; size: number }, message?: string }> {
+    const formData = new FormData();
+    formData.append('video', file);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const response = await fetch(`${API_BASE_URL}/upload/video`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` })
+      },
+      body: formData
+    });
+    return this.handleResponse(response);
+  }
+
+  // Upload Thumbnail
+  static async uploadThumbnail(file: File): Promise<{ success: boolean, data?: { url: string }, message?: string }> {
+    const formData = new FormData();
+    formData.append('thumbnail', file);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const response = await fetch(`${API_BASE_URL}/upload/thumbnail`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` })
+      },
+      body: formData
+    });
+    return this.handleResponse(response);
+  }
+
+  // Chat attachment upload
+  static async uploadChatAttachment(file: File): Promise<{ success: boolean, data?: { url: string; filename: string; size: number; mimetype: string }, message?: string }> {
+    const formData = new FormData();
+    formData.append('attachment', file);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const response = await fetch(`${API_BASE_URL}/upload/chat-attachment`, {
+      method: 'POST',
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+      body: formData
+    });
+    return this.handleResponse(response);
+  }
+
+  // Admin Verifications (KYC)
+  static async adminListVerifications(params?: { status?: string; page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+
+    const response = await fetch(`${API_BASE_URL}/admin/verifications?${searchParams}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async adminGetVerification(expertId: number) {
+    const response = await fetch(`${API_BASE_URL}/admin/verifications/${expertId}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async adminReviewVerification(expertId: number, data: { decision: string; rejectionReason?: string; notes?: string }) {
+    const response = await fetch(`${API_BASE_URL}/admin/verifications/${expertId}/review`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  // Coin Packs
+  static async getCoinPacks() {
+    const response = await fetch(`${API_BASE_URL}/payments/coin-packs`);
+    return this.handleResponse(response);
+  }
+
+  // Buy Coins via Flouci
+  static async buyCoinPack(coinPackId: number) {
+    const response = await fetch(`${API_BASE_URL}/payments/buy-coins`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ coinPackId })
+    });
+    return this.handleResponse(response);
+  }
+
+  // Buy Course via Flouci (TND direct payment)
+  static async buyCourse(courseId: number) {
+    const response = await fetch(`${API_BASE_URL}/payments/buy-course`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ courseId })
+    });
+    return this.handleResponse(response);
+  }
+
+  // Buy Video via Flouci (TND direct payment)
+  static async buyVideo(videoId: number) {
+    const response = await fetch(`${API_BASE_URL}/payments/buy-video`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ videoId })
+    });
+    return this.handleResponse(response);
+  }
+
+  // Verify Payment
+  static async verifyPayment(paymentId: number) {
+    const response = await fetch(`${API_BASE_URL}/payments/${paymentId}/verify`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Course Progress
+  static async getCourseProgress(courseId: number) {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}/progress`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Mark Lesson Complete
+  static async markLessonComplete(lessonId: number) {
+    const response = await fetch(`${API_BASE_URL}/courses/lessons/${lessonId}/complete`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Leave Course
+  static async leaveCourse(courseId: number) {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}/leave`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Video Comments
+  static async addVideoComment(videoId: number, content: string) {
+    const response = await fetch(`${API_BASE_URL}/videos/${videoId}/comment`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ content })
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getVideoComments(videoId: number, params?: { page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+
+    const response = await fetch(`${API_BASE_URL}/videos/${videoId}/comments?${searchParams}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  // Track Video View
+  static async trackVideoView(videoId: number) {
+    const response = await fetch(`${API_BASE_URL}/videos/${videoId}/view`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
 }
 
 export default ApiService;
+
+// Named exports for convenience
+export const adminListPayouts = ApiService.adminListPayouts.bind(ApiService);
+export const adminProcessPayout = ApiService.adminProcessPayout.bind(ApiService);
+export const createScheduleException = ApiService.createScheduleException.bind(ApiService);
+export const listScheduleExceptions = ApiService.listScheduleExceptions.bind(ApiService);
+export const deleteScheduleException = ApiService.deleteScheduleException.bind(ApiService);
+export const submitQuiz = ApiService.submitQuiz.bind(ApiService);
+export const getMyEnrollments = ApiService.getMyEnrollments.bind(ApiService);
+export const generateCertificate = ApiService.generateCertificate.bind(ApiService);
+export const uploadVideo = ApiService.uploadVideo.bind(ApiService);
+export const uploadThumbnail = ApiService.uploadThumbnail.bind(ApiService);
+export const getCoinPacks = ApiService.getCoinPacks.bind(ApiService);
+export const buyCoinPack = ApiService.buyCoinPack.bind(ApiService);
+export const buyCourse = ApiService.buyCourse.bind(ApiService);
+export const buyVideo = ApiService.buyVideo.bind(ApiService);
+export const verifyPayment = ApiService.verifyPayment.bind(ApiService);
+export const getCourseProgress = ApiService.getCourseProgress.bind(ApiService);
+export const markLessonComplete = ApiService.markLessonComplete.bind(ApiService);
+export const addVideoComment = ApiService.addVideoComment.bind(ApiService);
+export const getVideoComments = ApiService.getVideoComments.bind(ApiService);
+export const trackVideoView = ApiService.trackVideoView.bind(ApiService);

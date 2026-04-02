@@ -647,6 +647,401 @@ class AdminController {
     }
   }
 
+  // ==========================================
+  // PHASE 2 - VALIDATION KYC EXPERTS
+  // ==========================================
+
+  /**
+   * PHASE 2 - Récupérer les demandes de vérification en attente
+   * @route GET /api/admin/verifications/pending
+   * @access Private (Admin only)
+   */
+  static async getPendingVerifications(req, res) {
+    try {
+      const { page = 1, limit = 20 } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const [verifications, total] = await Promise.all([
+        prisma.expert.findMany({
+          where: {
+            verificationStatus: 'PENDING'
+          },
+          orderBy: { submittedAt: 'asc' }, // Plus anciennes en premier
+          skip,
+          take: parseInt(limit),
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                profilePicture: true
+              }
+            }
+          }
+        }),
+        prisma.expert.count({
+          where: {
+            verificationStatus: 'PENDING'
+          }
+        })
+      ]);
+
+      return ApiResponse.success(res, {
+        verifications,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      });
+    } catch (error) {
+      console.error('Get pending verifications error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération des demandes');
+    }
+  }
+
+  /**
+   * PHASE 2 - Récupérer une demande de vérification spécifique
+   * @route GET /api/admin/verifications/:expertId
+   * @access Private (Admin only)
+   */
+  static async getVerificationById(req, res) {
+    try {
+      const { expertId } = req.params;
+
+      const expert = await prisma.expert.findUnique({
+        where: { id: parseInt(expertId) },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              profilePicture: true,
+              createdAt: true
+            }
+          }
+        }
+      });
+
+      if (!expert) {
+        return ApiResponse.notFound(res, 'Expert non trouvé');
+      }
+
+      // Récupérer les statistiques de l'expert
+      const [videosCount, formationsCount, reviewsCount, avgRating] = await Promise.all([
+        prisma.video.count({ where: { expertId: expert.id } }),
+        prisma.formation.count({ where: { expertId: expert.id } }),
+        prisma.review.count({ where: { expertId: expert.id } }),
+        prisma.review.aggregate({
+          where: { expertId: expert.id },
+          _avg: { rating: true }
+        })
+      ]);
+
+      return ApiResponse.success(res, {
+        expert,
+        stats: {
+          videosCount,
+          formationsCount,
+          reviewsCount,
+          avgRating: avgRating._avg.rating || 0
+        }
+      });
+    } catch (error) {
+      console.error('Get verification by ID error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération de la demande');
+    }
+  }
+
+  /**
+   * PHASE 2 - Approuver ou rejeter une demande de vérification KYC
+   * @route POST /api/admin/verifications/:expertId/review
+   * @access Private (Admin only)
+   */
+  static async reviewVerification(req, res) {
+    try {
+      const { expertId } = req.params;
+      const { action, rejectionReason, verificationNote } = req.body;
+
+      if (!action || !['approve', 'reject'].includes(action)) {
+        return ApiResponse.badRequest(res, 'Action invalide (approve ou reject)');
+      }
+
+      if (action === 'reject' && !rejectionReason) {
+        return ApiResponse.badRequest(res, 'Le motif de refus est obligatoire');
+      }
+
+      const expert = await prisma.expert.findUnique({
+        where: { id: parseInt(expertId) },
+        select: { id: true, userId: true, name: true, verificationStatus: true }
+      });
+
+      if (!expert) {
+        return ApiResponse.notFound(res, 'Expert non trouvé');
+      }
+
+      if (expert.verificationStatus !== 'PENDING') {
+        return ApiResponse.badRequest(res, 'Cette demande n\'est pas en attente de validation');
+      }
+
+      // Mettre à jour le statut
+      const updateData = {
+        verificationStatus: action === 'approve' ? 'APPROVED' : 'REJECTED',
+        verified: action === 'approve',
+        reviewedAt: new Date(),
+        reviewedBy: req.user.id, // Admin qui a fait la review
+        verificationNote: verificationNote || null,
+        rejectionReason: action === 'reject' ? rejectionReason : null
+      };
+
+      const updated = await prisma.expert.update({
+        where: { id: parseInt(expertId) },
+        data: updateData
+      });
+
+      // Créer un audit log
+      await prisma.auditLog.create({
+        data: {
+          adminId: req.user.id,
+          action: action === 'approve' ? 'APPROVE_VERIFICATION' : 'REJECT_VERIFICATION',
+          targetType: 'expert',
+          targetId: expert.id,
+          details: action === 'approve'
+            ? `Approved KYC verification for expert ${expert.name}`
+            : `Rejected KYC verification for expert ${expert.name}: ${rejectionReason}`
+        }
+      });
+
+      // Notifier l'expert
+      try {
+        const message = action === 'approve'
+          ? 'Félicitations ! Votre demande de vérification a été approuvée. Vous bénéficiez maintenant du badge vérifié.'
+          : `Votre demande de vérification a été refusée. Raison : ${rejectionReason}`;
+
+        await prisma.notification.create({
+          data: {
+            userId: expert.userId,
+            title: action === 'approve' ? 'Vérification approuvée ✓' : 'Vérification refusée',
+            message,
+            type: 'verification',
+            actionUrl: '/dashboard/profile'
+          }
+        });
+
+        // Notification temps réel
+        const io = req.app.get('io');
+        const onlineUsers = req.app.get('onlineUsers');
+        const sockId = onlineUsers?.get(expert.userId);
+        if (io && sockId) {
+          io.to(sockId).emit('notification', {
+            title: action === 'approve' ? 'Vérification approuvée ✓' : 'Vérification refusée',
+            message,
+            type: 'verification',
+            actionUrl: '/dashboard/profile',
+            createdAt: new Date().toISOString()
+          });
+          io.to(sockId).emit('expertVerificationChanged', {
+            expertId: expert.id,
+            verified: updated.verified,
+            verificationStatus: updated.verificationStatus
+          });
+        }
+      } catch (e) {
+        console.error('Notification error:', e);
+      }
+
+      return ApiResponse.success(res, updated, action === 'approve' ? 'Demande approuvée' : 'Demande refusée');
+    } catch (error) {
+      console.error('Review verification error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la validation de la demande');
+    }
+  }
+
+  /**
+   * PHASE 2 - Récupérer toutes les demandes de vérification (avec filtres)
+   * @route GET /api/admin/verifications
+   * @access Private (Admin only)
+   */
+  static async getAllVerifications(req, res) {
+    try {
+      const { status, page = 1, limit = 20 } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where = {};
+      if (status) {
+        where.verificationStatus = status;
+      }
+
+      const [verifications, total] = await Promise.all([
+        prisma.expert.findMany({
+          where,
+          orderBy: { submittedAt: 'desc' },
+          skip,
+          take: parseInt(limit),
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                profilePicture: true
+              }
+            }
+          }
+        }),
+        prisma.expert.count({ where })
+      ]);
+
+      return ApiResponse.success(res, {
+        verifications,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      });
+    } catch (error) {
+      console.error('Get all verifications error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération des demandes');
+    }
+  }
+
+  /**
+   * PHASE 2 - Lister tous les payouts des experts
+   * @route GET /api/admin/payouts
+   * @access Admin only
+   */
+  static async listPayouts(req, res) {
+    try {
+      const { status, period, page = 1, limit = 20 } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where = {};
+      if (status) {
+        where.status = status;
+      }
+      if (period) {
+        where.period = period;
+      }
+
+      const [payouts, total] = await Promise.all([
+        prisma.expertPayout.findMany({
+          where,
+          orderBy: { id: 'desc' },
+          skip,
+          take: parseInt(limit),
+          include: {
+            expert: {
+              select: {
+                id: true,
+                name: true,
+                user: {
+                  select: {
+                    email: true,
+                    firstName: true,
+                    lastName: true
+                  }
+                }
+              }
+            }
+          }
+        }),
+        prisma.expertPayout.count({ where })
+      ]);
+
+      return ApiResponse.success(res, {
+        payouts,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      });
+    } catch (error) {
+      console.error('List payouts error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération des payouts');
+    }
+  }
+
+  /**
+   * PHASE 2 - Traiter un payout (marquer comme payé)
+   * @route POST /api/admin/payouts/:id/process
+   * @access Admin only
+   */
+  static async processPayout(req, res) {
+    try {
+      const payoutId = parseInt(req.params.id);
+      const { notes } = req.body;
+
+      // Vérifier que le payout existe
+      const payout = await prisma.expertPayout.findUnique({
+        where: { id: payoutId },
+        include: {
+          expert: {
+            select: {
+              id: true,
+              name: true,
+              userId: true
+            }
+          }
+        }
+      });
+
+      if (!payout) {
+        return ApiResponse.notFound(res, 'Payout non trouvé');
+      }
+
+      // Vérifier que le payout n'est pas déjà traité
+      if (payout.status === 'COMPLETED') {
+        return ApiResponse.badRequest(res, 'Ce payout a déjà été traité');
+      }
+
+      if (payout.status === 'FAILED') {
+        return ApiResponse.badRequest(res, 'Ce payout a échoué et ne peut pas être traité');
+      }
+
+      // Marquer comme traité
+      const updated = await prisma.expertPayout.update({
+        where: { id: payoutId },
+        data: {
+          status: 'COMPLETED',
+          processedAt: new Date(),
+          notes: notes || null
+        }
+      });
+
+      // Notifier l'expert
+      try {
+        if (payout.expert.userId) {
+          await prisma.notification.create({
+            data: {
+              userId: payout.expert.userId,
+              title: 'Paiement traité',
+              message: `Votre paiement de ${payout.netAmount} TND pour la période ${payout.period} a été traité avec succès.`,
+              type: 'payout_processed',
+              actionUrl: '/dashboard/earnings'
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Notification error:', e);
+      }
+
+      return ApiResponse.success(res, updated, 'Payout traité avec succès');
+    } catch (error) {
+      console.error('Process payout error:', error);
+      return ApiResponse.error(res, 'Erreur lors du traitement du payout');
+    }
+  }
+
 }
 
 module.exports = AdminController;

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -10,7 +11,10 @@ import { useToast } from '@/contexts/ToastContext';
 
 export default function AppHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const isDarkMode = mounted ? resolvedTheme === 'dark' : false;
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCoinsPopup, setShowCoinsPopup] = useState(false);
@@ -344,15 +348,7 @@ export default function AppHeader() {
     };
   }, [socket]);
 
-  useEffect(() => {
-    const darkMode = localStorage.getItem('darkMode') === 'true';
-    setIsDarkMode(darkMode);
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
+  // Dark mode is now managed by next-themes ThemeProvider
 
   const handleNavClick = (path: string, isPublic: boolean = false) => {
     setIsMenuOpen(false);
@@ -375,10 +371,7 @@ export default function AppHeader() {
   };
 
   const toggleDarkMode = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode.toString());
-    document.documentElement.classList.toggle('dark', newDarkMode);
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
   const handleLogout = async () => {
@@ -387,11 +380,11 @@ export default function AppHeader() {
   };
 
   const navLinks = [
-    { href: '/', label: 'Accueil', icon: 'ri-home-line', isPublic: true },
-    ...(user ? [{ href: '/dashboard', label: 'Dashboard', icon: 'ri-dashboard-line', isPublic: false }] : []),
-    { href: '/experts', label: 'Experts', icon: 'ri-user-star-line', isPublic: false },
-    { href: '/formations', label: 'Formations', icon: 'ri-graduation-cap-line', isPublic: false },
-    { href: '/videos', label: 'Vidéos', icon: 'ri-play-circle-line', isPublic: false },
+    { href: '/', label: 'Dashboard', icon: 'ri-dashboard-line', isPublic: true },
+    { href: '/experts', label: 'Experts', icon: 'ri-user-star-line', isPublic: true },
+    { href: '/formations', label: 'Formations', icon: 'ri-graduation-cap-line', isPublic: true },
+    { href: '/videos', label: 'Vidéos', icon: 'ri-play-circle-line', isPublic: true },
+    { href: '/reels', label: 'Reels', icon: 'ri-movie-line', isPublic: true },
   ];
 
   // Favorites from context
@@ -796,6 +789,15 @@ export default function AppHeader() {
                             {user.email}
                           </p>
                         </div>
+
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <i className="ri-dashboard-line"></i>
+                          <span>Dashboard</span>
+                        </Link>
 
                         <Link
                           href="/dashboard/profile"

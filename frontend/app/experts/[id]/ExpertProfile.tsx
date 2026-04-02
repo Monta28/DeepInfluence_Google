@@ -153,7 +153,7 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
     return (
         <div className="flex justify-center items-center py-32">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="ml-3 text-gray-600">Chargement du profil...</span>
+            <span className="ml-3 text-gray-600 dark:text-gray-300">Chargement du profil...</span>
         </div>
     );
   }
@@ -161,8 +161,8 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
   if (error || !expert) {
     return (
         <div className="text-center py-32">
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Erreur</h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">{error}</p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Erreur</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">{error}</p>
             <Link href="/experts" className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
             Retour aux experts
             </Link>
@@ -298,7 +298,7 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
       </section>
 
       {/* Tab Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
@@ -312,7 +312,7 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
                 className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 <i className={`${tab.icon} mr-2`}></i>
@@ -329,16 +329,16 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Main Column */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">À propos de {expert.name}</h2>
-                <p className="text-gray-600 leading-relaxed mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-8 mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">À propos de {expert.name}</h2>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6">
                   {expert.description || `${expert.name} is a renowned expert in ${expert.specialty}. With years of experience, they guide clients toward excellence and success.`}
                 </p>
                 
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Domaines d'expertise</h3>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Domaines d'expertise</h3>
                 <div className="flex flex-wrap gap-2 mb-6">
                   {expert.tags.map((tag, index) => (
-                    <span key={index} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                    <span key={index} className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full text-sm font-medium">
                       {tag}
                     </span>
                   ))}
@@ -348,22 +348,22 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
 
             {/* Sidebar */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">Tarifs</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 sticky top-24">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Tarifs</h3>
                 
                 <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center">
                       <i className="ri-message-line text-blue-600 mr-3"></i>
-                      <span className="font-medium">Message</span>
+                      <span className="font-medium text-gray-900 dark:text-white">Message</span>
                     </div>
                     <span className="font-bold text-blue-600">{expert.pricePerMessage} coins</span>
                   </div>
-                  
-                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+
+                  <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center">
                       <i className="ri-time-line text-green-600 mr-3"></i>
-                      <span className="font-medium">Consultation</span>
+                      <span className="font-medium text-gray-900 dark:text-white">Consultation</span>
                     </div>
                     <span className="font-bold text-green-600">{expert.hourlyRate} coins/h</span>
                   </div>
@@ -399,11 +399,11 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
 
         {activeTab === 'reviews' && (
           <div className="max-w-4xl">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Avis clients ({expert.reviews})</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Avis clients ({expert.reviews})</h2>
             <div className="space-y-6">
               {expert.reviewList && expert.reviewList.length > 0 ? (
                 expert.reviewList.map((review) => (
-                  <div key={review.id} className="border-b pb-6 last:border-b-0">
+                  <div key={review.id} className="border-b border-gray-200 dark:border-gray-700 pb-6 last:border-b-0">
                     <div className="flex items-start">
                       <img 
                         src={review.user.avatar || `https://ui-avatars.com/api/?name=${review.user.firstName}+${review.user.lastName}`} 
@@ -412,19 +412,19 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
                       />
                       <div>
                         <div className="flex items-center mb-1">
-                          <p className="font-semibold">{review.user.firstName} {review.user.lastName}</p>
+                          <p className="font-semibold text-gray-900 dark:text-white">{review.user.firstName} {review.user.lastName}</p>
                           <div className="flex items-center ml-4">
                             {renderStars(review.rating)}
                           </div>
                         </div>
-                        <p className="text-gray-700">{review.comment}</p>
-                        <p className="text-sm text-gray-500 mt-2">{new Date(review.createdAt).toLocaleDateString()}</p>
+                        <p className="text-gray-700 dark:text-gray-200">{review.comment}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{new Date(review.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-gray-500">Aucun avis pour cet expert pour le moment.</p>
+                <p className="text-center text-gray-500 dark:text-gray-400">Aucun avis pour cet expert pour le moment.</p>
               )}
             </div>
           </div>
@@ -432,15 +432,15 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
 
         {activeTab === 'availability' && (
           <div className="max-w-4xl">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">Disponibilités</h2>
-            
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Disponibilités</h2>
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
               <div className="text-center py-12">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="ri-calendar-line text-blue-600 text-2xl"></i>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Calendrier de réservation</h3>
-                <p className="text-gray-600 mb-6">Le système de réservation sera bientôt disponible.</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Calendrier de réservation</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">Le système de réservation sera bientôt disponible.</p>
                 <button
                   onClick={handleBooking}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
@@ -460,12 +460,12 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
 // Le composant exporté qui utilise Suspense
 export default function ExpertProfile({ expertId }: ExpertProfileProps) {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
         <AppHeader />
         <Suspense fallback={
             <div className="flex justify-center items-center py-32">
                 <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="ml-3 text-gray-600">Chargement...</span>
+                <span className="ml-3 text-gray-600 dark:text-gray-300">Chargement...</span>
             </div>
         }>
             <ExpertProfileContent expertId={expertId} />

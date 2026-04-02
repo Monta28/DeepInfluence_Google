@@ -31,10 +31,12 @@ export default function VideosPage() {
     const [statsData, setStatsData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    
+
     const [activeTab, setActiveTab] = useState('all'); // 'all', 'free', 'premium'
     const [expertTab, setExpertTab] = useState<'created'|'unlocked'>('created');
     const [searchTerm, setSearchTerm] = useState('');
+    const [deleteModalVideoId, setDeleteModalVideoId] = useState<number | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const { user, isLoading: isAuthLoading } = useAuth();
     const { formatPrice } = useCurrency();
@@ -99,6 +101,21 @@ export default function VideosPage() {
         }
     };
     
+    const handleDeleteVideo = async () => {
+        if (!deleteModalVideoId) return;
+        setDeleting(true);
+        try {
+            await ApiService.delete(`/videos/${deleteModalVideoId}`);
+            setDeleteModalVideoId(null);
+            loadPageData();
+        } catch (err) {
+            console.error('Error deleting video:', err);
+            alert('Erreur lors de la suppression de la vidéo');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     const currentList = user?.userType === 'expert' ? (expertTab === 'created' ? createdVideos : unlockedVideos) : videos;
     const filteredVideos = currentList.filter((video: any) => {
         const matchesFilter = activeTab === 'all' || video.type === activeTab;
@@ -160,11 +177,64 @@ export default function VideosPage() {
                     {loading ? <p>Chargement de vos vidéos...</p> : error ? <p className="text-red-500">{error}</p> : (
                         filteredVideos.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {filteredVideos.map((v: any) => <VideoCard key={v.id} video={v} />)}
+                                {filteredVideos.map((v: any) => (
+                                    <div key={v.id} className="relative group/card">
+                                        <VideoCard video={v} />
+                                        {expertTab === 'created' && (
+                                            <div className="absolute top-2 left-2 z-10 flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                                                <Link
+                                                    href={`/dashboard/videos/edit/${v.id}`}
+                                                    className="p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                                                    title="Modifier"
+                                                >
+                                                    <i className="ri-pencil-line text-blue-600 dark:text-blue-400"></i>
+                                                </Link>
+                                                <button
+                                                    onClick={() => setDeleteModalVideoId(v.id)}
+                                                    className="p-2 bg-white dark:bg-gray-700 rounded-full shadow-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                                    title="Supprimer"
+                                                >
+                                                    <i className="ri-delete-bin-line text-red-600 dark:text-red-400"></i>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         ) : (
                             <div className="text-center py-16"><p className="text-gray-500">Aucune vidéo ne correspond à vos filtres.</p></div>
                         )
+                    )}
+
+                    {/* Modal de confirmation de suppression */}
+                    {deleteModalVideoId && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+                                <div className="flex justify-center mb-4">
+                                    <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                                        <i className="ri-delete-bin-line text-2xl text-red-600 dark:text-red-400"></i>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Confirmer la suppression</h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-center mb-6">Cette action est irréversible. La vidéo sera définitivement supprimée.</p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setDeleteModalVideoId(null)}
+                                        disabled={deleting}
+                                        className="flex-1 py-2.5 px-4 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteVideo}
+                                        disabled={deleting}
+                                        className="flex-1 py-2.5 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
+                                    >
+                                        {deleting ? 'Suppression...' : 'Supprimer'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </main>
             </div>

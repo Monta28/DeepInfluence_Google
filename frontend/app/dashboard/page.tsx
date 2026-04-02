@@ -151,7 +151,7 @@ export default function Dashboard() {
             {/* Actions rapides */}
             <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm mb-8">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Actions rapides</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Link href="/dashboard/formations" className="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors">
                   <i className="ri-graduation-cap-line text-green-600 dark:text-green-400 text-2xl mb-2"></i>
                   <span className="text-sm font-medium text-green-900 dark:text-green-100 text-center">Mes formations</span>
@@ -168,6 +168,23 @@ export default function Dashboard() {
                   <i className="ri-message-line text-blue-600 dark:text-blue-400 text-2xl mb-2"></i>
                   <span className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">Mes Messages</span>
                 </Link>
+                {user?.userType === 'expert' ? (
+                  <>
+                    <Link href="/dashboard/reels" className="flex flex-col items-center p-4 bg-pink-50 dark:bg-pink-900/30 rounded-lg hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors">
+                      <i className="ri-movie-2-line text-pink-600 dark:text-pink-400 text-2xl mb-2"></i>
+                      <span className="text-sm font-medium text-pink-900 dark:text-pink-100 text-center">Mes Reels</span>
+                    </Link>
+                    <Link href="/dashboard/availability" className="flex flex-col items-center p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-colors">
+                      <i className="ri-calendar-check-line text-teal-600 dark:text-teal-400 text-2xl mb-2"></i>
+                      <span className="text-sm font-medium text-teal-900 dark:text-teal-100 text-center">Disponibilités</span>
+                    </Link>
+                  </>
+                ) : (
+                  <Link href="/signup?type=expert" className="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 rounded-lg hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900/50 dark:hover:to-indigo-900/50 transition-colors border-2 border-dashed border-purple-300 dark:border-purple-600">
+                    <i className="ri-user-star-line text-purple-600 dark:text-purple-400 text-2xl mb-2"></i>
+                    <span className="text-sm font-medium text-purple-900 dark:text-purple-100 text-center">Devenir Expert</span>
+                  </Link>
+                )}
               </div>
             </div>
 

@@ -22,23 +22,38 @@ class ExpertController {
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const where = {};
       
-      if (category && category !== 'all') where.category = category;
+      const andConditions = [];
+
+      if (category && category !== 'all') {
+        andConditions.push({
+          OR: [
+            { category: category },
+            { categories: { contains: category } }
+          ]
+        });
+      }
       if (search) {
         const term = String(search || '').trim();
         const norm = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
         const termLower = term.toLowerCase();
         const termUpper = term.toUpperCase();
         const termNorm = norm(term);
-        where.OR = [
-          { name: { contains: term } },
-          { name: { contains: termLower } },
-          { name: { contains: termUpper } },
-          { specialty: { contains: term } },
-          { specialty: { contains: termLower } },
-          { specialty: { contains: termUpper } },
-          { nameNormalized: { contains: termNorm } },
-          { specialtyNormalized: { contains: termNorm } },
-        ];
+        andConditions.push({
+          OR: [
+            { name: { contains: term } },
+            { name: { contains: termLower } },
+            { name: { contains: termUpper } },
+            { specialty: { contains: term } },
+            { specialty: { contains: termLower } },
+            { specialty: { contains: termUpper } },
+            { nameNormalized: { contains: termNorm } },
+            { specialtyNormalized: { contains: termNorm } },
+          ]
+        });
+      }
+
+      if (andConditions.length > 0) {
+        where.AND = andConditions;
       }
 
       const orderBy = { [sortBy]: order };
@@ -59,6 +74,7 @@ class ExpertController {
         image: expert.user.avatar,
         tags: JSON.parse(expert.tags || '[]'),
         languages: JSON.parse(expert.languages || '[]'),
+        categories: JSON.parse(expert.categories || '[]'),
       }));
 
       return ApiResponse.success(res, {
@@ -145,9 +161,14 @@ class ExpertController {
   static async getExpertById(req, res) {
     try {
       const { id } = req.params;
+      const expertId = parseInt(id, 10);
+
+      if (Number.isNaN(expertId)) {
+        return ApiResponse.badRequest(res, 'ID expert invalide');
+      }
 
       const expert = await prisma.expert.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: expertId },
         include: {
           user: {
             select: {
@@ -199,6 +220,8 @@ class ExpertController {
         rating: expert.rating,
         reviews: expert.reviews, // Ceci est le nombre total d'avis
         hourlyRate: expert.hourlyRate,
+        minuteRate: expert.minuteRate,
+        videoMessageRate: expert.videoMessageRate,
         pricePerMessage: expert.pricePerMessage,
         image: expert.user.avatar,
         isOnline: expert.isOnline,
@@ -206,11 +229,15 @@ class ExpertController {
         tags: JSON.parse(expert.tags || '[]'),
         verified: expert.verified,
         category: expert.category,
+        categories: JSON.parse(expert.categories || '[]'),
         languages: JSON.parse(expert.languages || '[]'),
         responseTime: expert.responseTime,
         sessions: expert.sessions,
         followers: expert.followers,
         description: expert.description,
+        country: expert.country,
+        linkedinUrl: expert.linkedinUrl,
+        rnePatente: expert.rnePatente,
         user: expert.user,
         formations: expert.formations,
         videos: expert.videos,
@@ -254,6 +281,8 @@ class ExpertController {
         rating: expert.rating,
         reviews: expert.reviews,
         hourlyRate: expert.hourlyRate,
+        minuteRate: expert.minuteRate,
+        videoMessageRate: expert.videoMessageRate,
         pricePerMessage: expert.pricePerMessage,
         image: expert.user?.avatar,
         isOnline: expert.isOnline,
@@ -261,11 +290,15 @@ class ExpertController {
         tags: JSON.parse(expert.tags || '[]'),
         verified: expert.verified,
         category: expert.category,
+        categories: JSON.parse(expert.categories || '[]'),
         languages: JSON.parse(expert.languages || '[]'),
         responseTime: expert.responseTime,
         sessions: expert.sessions,
         followers: expert.followers,
         description: expert.description,
+        country: expert.country,
+        linkedinUrl: expert.linkedinUrl,
+        rnePatente: expert.rnePatente,
         user: expert.user,
         formations: expert.formations,
         videos: expert.videos,
@@ -337,11 +370,15 @@ class ExpertController {
         specialty,
         hourlyRate,
         pricePerMessage,
+        minuteRate,
+        videoMessageRate,
         image,
         tags = [],
         category,
+        categories,
         languages = [],
-        description
+        description,
+        country
       } = req.body;
 
       // Validation des champs requis
@@ -369,11 +406,15 @@ class ExpertController {
           specialtyNormalized: normalize(specialty),
           hourlyRate: parseInt(hourlyRate),
           pricePerMessage: parseInt(pricePerMessage),
+          minuteRate: minuteRate !== undefined ? parseInt(minuteRate) : undefined,
+          videoMessageRate: videoMessageRate !== undefined ? parseInt(videoMessageRate) : undefined,
           image,
           tags: JSON.stringify(tags),
           category,
+          categories: Array.isArray(categories) ? JSON.stringify(categories) : categories,
           languages: JSON.stringify(languages),
-          description
+          description,
+          country
         },
         include: {
           user: {
@@ -426,13 +467,19 @@ class ExpertController {
         specialty,
         hourlyRate,
         pricePerMessage,
+        minuteRate,
+        videoMessageRate,
         image,
         tags,
         category,
+        categories,
         languages,
         description,
         isOnline,
-        nextAvailable
+        nextAvailable,
+        country,
+        linkedinUrl,
+        rnePatente
       } = req.body;
 
       // Préparer les données à mettre à jour
@@ -449,13 +496,19 @@ class ExpertController {
       }
       if (hourlyRate !== undefined) updateData.hourlyRate = parseInt(hourlyRate);
       if (pricePerMessage !== undefined) updateData.pricePerMessage = parseInt(pricePerMessage);
+      if (minuteRate !== undefined) updateData.minuteRate = parseInt(minuteRate);
+      if (videoMessageRate !== undefined) updateData.videoMessageRate = parseInt(videoMessageRate);
       if (image !== undefined) updateData.image = image;
       if (tags !== undefined) updateData.tags = JSON.stringify(tags);
       if (category !== undefined) updateData.category = category;
+      if (categories !== undefined) updateData.categories = Array.isArray(categories) ? JSON.stringify(categories) : categories;
       if (languages !== undefined) updateData.languages = JSON.stringify(languages);
       if (description !== undefined) updateData.description = description;
       if (isOnline !== undefined) updateData.isOnline = isOnline;
       if (nextAvailable !== undefined) updateData.nextAvailable = nextAvailable;
+      if (country !== undefined) updateData.country = country;
+      if (linkedinUrl !== undefined) updateData.linkedinUrl = linkedinUrl;
+      if (rnePatente !== undefined) updateData.rnePatente = rnePatente;
 
       const updatedExpert = await prisma.expert.update({
         where: { id: expertId },
@@ -614,6 +667,406 @@ class ExpertController {
     } catch (e) {
       console.error('Get top content error:', e);
       return ApiResponse.error(res, 'Erreur lors de la récupération du top contenu');
+    }
+  }
+
+  /**
+   * Récupérer la disponibilité de l'expert connecté
+   */
+  static async getMyAvailability(req, res) {
+    try {
+      const expert = await prisma.expert.findUnique({
+        where: { userId: req.user.id },
+        select: { id: true, availableDays: true, availableTimeSlots: true, vacationDays: true, appointmentInterval: true }
+      });
+
+      if (!expert) {
+        return ApiResponse.notFound(res, 'Profil expert non trouvé');
+      }
+
+      const availability = {
+        availableDays: expert.availableDays ? JSON.parse(expert.availableDays) : [],
+        availableTimeSlots: expert.availableTimeSlots ? JSON.parse(expert.availableTimeSlots) : [],
+        vacationDays: expert.vacationDays ? JSON.parse(expert.vacationDays) : [],
+        appointmentInterval: expert.appointmentInterval || 30
+      };
+
+      return ApiResponse.success(res, availability);
+    } catch (error) {
+      console.error('Get my availability error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération de la disponibilité');
+    }
+  }
+
+  /**
+   * Mettre à jour la disponibilité de l'expert connecté
+   */
+  static async updateMyAvailability(req, res) {
+    try {
+      const { availableDays, availableTimeSlots, vacationDays, appointmentInterval } = req.body;
+
+      const expert = await prisma.expert.findUnique({
+        where: { userId: req.user.id }
+      });
+
+      if (!expert) {
+        return ApiResponse.notFound(res, 'Profil expert non trouvé');
+      }
+
+      // Valider les jours (0-6 pour dimanche-samedi)
+      if (availableDays && !Array.isArray(availableDays)) {
+        return ApiResponse.badRequest(res, 'availableDays doit être un tableau');
+      }
+
+      // Valider les créneaux horaires
+      if (availableTimeSlots && !Array.isArray(availableTimeSlots)) {
+        return ApiResponse.badRequest(res, 'availableTimeSlots doit être un tableau');
+      }
+
+      // Valider les jours de congé
+      if (vacationDays && !Array.isArray(vacationDays)) {
+        return ApiResponse.badRequest(res, 'vacationDays doit être un tableau');
+      }
+
+      // Valider l'intervalle
+      if (appointmentInterval && (typeof appointmentInterval !== 'number' || appointmentInterval < 15)) {
+        return ApiResponse.badRequest(res, 'appointmentInterval doit être un nombre >= 15');
+      }
+
+      const updateData = {};
+      if (availableDays !== undefined) {
+        updateData.availableDays = JSON.stringify(availableDays);
+      }
+      if (availableTimeSlots !== undefined) {
+        updateData.availableTimeSlots = JSON.stringify(availableTimeSlots);
+      }
+      if (vacationDays !== undefined) {
+        updateData.vacationDays = JSON.stringify(vacationDays);
+      }
+      if (appointmentInterval !== undefined) {
+        updateData.appointmentInterval = parseInt(appointmentInterval);
+      }
+
+      await prisma.expert.update({
+        where: { id: expert.id },
+        data: updateData
+      });
+
+      return ApiResponse.success(res, { availableDays, availableTimeSlots, vacationDays, appointmentInterval }, 'Disponibilité mise à jour');
+    } catch (error) {
+      console.error('Update my availability error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la mise à jour de la disponibilité');
+    }
+  }
+
+  /**
+   * Récupérer la disponibilité d'un expert par ID (endpoint public pour la réservation)
+   */
+  static async getExpertAvailability(req, res) {
+    try {
+      const { id } = req.params;
+
+      const expert = await prisma.expert.findUnique({
+        where: { id: parseInt(id) },
+        select: { id: true, availableDays: true, availableTimeSlots: true, vacationDays: true, appointmentInterval: true }
+      });
+
+      if (!expert) {
+        return ApiResponse.notFound(res, 'Expert non trouvé');
+      }
+
+      // Si pas de disponibilité configurée, retourner des valeurs par défaut
+      const defaultDays = [1, 2, 3, 4, 5]; // Lundi à vendredi
+      const defaultTimeSlots = [
+        { start: '09:00', end: '12:00' },
+        { start: '14:00', end: '18:30' }
+      ];
+
+      const interval = expert.appointmentInterval || 30;
+      const vacationDays = expert.vacationDays ? JSON.parse(expert.vacationDays) : [];
+
+      const availability = {
+        availableDays: expert.availableDays ? JSON.parse(expert.availableDays) : defaultDays,
+        availableTimeSlots: expert.availableTimeSlots ? JSON.parse(expert.availableTimeSlots) : defaultTimeSlots
+      };
+
+      // Générer les créneaux selon l'intervalle configuré
+      const timeSlots = [];
+      availability.availableTimeSlots.forEach(slot => {
+        let [startH, startM] = slot.start.split(':').map(Number);
+        const [endH, endM] = slot.end.split(':').map(Number);
+        const endMinutes = endH * 60 + endM;
+
+        while (startH * 60 + startM < endMinutes) {
+          const time = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+          timeSlots.push(time);
+          startM += interval;
+          if (startM >= 60) {
+            startH += Math.floor(startM / 60);
+            startM = startM % 60;
+          }
+        }
+      });
+
+      return ApiResponse.success(res, {
+        availableDays: availability.availableDays,
+        availableTimeSlots: availability.availableTimeSlots,
+        vacationDays: vacationDays,
+        appointmentInterval: interval,
+        timeSlots: timeSlots.sort()
+      });
+    } catch (error) {
+      console.error('Get expert availability error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération de la disponibilité');
+    }
+  }
+
+  // ==========================================
+  // PHASE 2 - VALIDATION KYC
+  // ==========================================
+
+  /**
+   * PHASE 2 - Récupérer le statut de vérification KYC de l'expert connecté
+   * @route GET /api/experts/verification/status
+   * @access Private (Expert only)
+   */
+  static async getMyVerificationStatus(req, res) {
+    try {
+      const expert = await prisma.expert.findUnique({
+        where: { userId: req.user.id },
+        select: {
+          id: true,
+          name: true,
+          verified: true,
+          verificationStatus: true,
+          submittedAt: true,
+          reviewedAt: true,
+          rejectionReason: true,
+          diplomaUrl: true,
+          identityDocumentUrl: true
+        }
+      });
+
+      if (!expert) {
+        return ApiResponse.notFound(res, 'Profil expert non trouvé');
+      }
+
+      // Déterminer le statut lisible
+      const statusMessages = {
+        NOT_SUBMITTED: {
+          title: 'Vérification non soumise',
+          message: 'Vous n\'avez pas encore soumis de demande de vérification. Complétez votre profil et soumettez vos documents pour obtenir le badge vérifié.',
+          canResubmit: true
+        },
+        PENDING: {
+          title: 'Vérification en cours',
+          message: 'Votre demande de vérification est en cours d\'examen par notre équipe. Vous recevrez une notification dès qu\'une décision sera prise.',
+          canResubmit: false
+        },
+        APPROVED: {
+          title: 'Vérification approuvée ✓',
+          message: 'Félicitations ! Votre profil est vérifié. Vous bénéficiez du badge vérifié qui renforce votre crédibilité.',
+          canResubmit: false
+        },
+        REJECTED: {
+          title: 'Vérification refusée',
+          message: expert.rejectionReason || 'Votre demande de vérification a été refusée. Veuillez corriger les informations et soumettre à nouveau.',
+          canResubmit: true
+        },
+        EXPIRED: {
+          title: 'Vérification expirée',
+          message: 'Votre vérification a expiré. Veuillez soumettre à nouveau vos documents pour renouveler votre badge vérifié.',
+          canResubmit: true
+        }
+      };
+
+      const statusInfo = statusMessages[expert.verificationStatus] || statusMessages.NOT_SUBMITTED;
+
+      return ApiResponse.success(res, {
+        expertId: expert.id,
+        expertName: expert.name,
+        verified: expert.verified,
+        verificationStatus: expert.verificationStatus,
+        submittedAt: expert.submittedAt,
+        reviewedAt: expert.reviewedAt,
+        rejectionReason: expert.rejectionReason,
+        hasDocuments: !!(expert.diplomaUrl || expert.identityDocumentUrl),
+        statusInfo
+      });
+    } catch (error) {
+      console.error('Get verification status error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération du statut de vérification');
+    }
+  }
+
+  /**
+   * PHASE 2 - Créer une exception horaire (jour indisponible ou heures personnalisées)
+   * @route POST /api/experts/schedule-exception
+   * @access Private (Expert only)
+   */
+  static async createScheduleException(req, res) {
+    try {
+      const expert = req.expert || (await prisma.expert.findUnique({ where: { userId: req.user.id } }));
+      if (!expert) {
+        return ApiResponse.forbidden(res, 'Seuls les experts peuvent gérer leurs exceptions horaires');
+      }
+
+      const { date, type, customSlots, reason } = req.body;
+
+      // Validation
+      if (!date || !type) {
+        return ApiResponse.badRequest(res, 'Date et type sont requis');
+      }
+
+      if (!['UNAVAILABLE', 'CUSTOM_HOURS'].includes(type)) {
+        return ApiResponse.badRequest(res, 'Type invalide. Valeurs acceptées: UNAVAILABLE, CUSTOM_HOURS');
+      }
+
+      if (type === 'CUSTOM_HOURS' && !customSlots) {
+        return ApiResponse.badRequest(res, 'customSlots est requis pour le type CUSTOM_HOURS');
+      }
+
+      if (type === 'CUSTOM_HOURS') {
+        if (!Array.isArray(customSlots) || customSlots.length === 0) {
+          return ApiResponse.badRequest(res, 'customSlots doit etre une liste non vide');
+        }
+
+        const hasInvalidSlot = customSlots.some(slot => {
+          return !slot || typeof slot.start !== 'string' || typeof slot.end !== 'string' || slot.start >= slot.end;
+        });
+
+        if (hasInvalidSlot) {
+          return ApiResponse.badRequest(res, 'Chaque creneau doit contenir start/end valides');
+        }
+      }
+
+      // Vérifier qu'il n'y a pas déjà une exception pour cette date
+      const existing = await prisma.expertScheduleException.findFirst({
+        where: {
+          expertId: expert.id,
+          date: new Date(date)
+        }
+      });
+
+      if (existing) {
+        return ApiResponse.badRequest(res, 'Une exception existe déjà pour cette date');
+      }
+
+      // Créer l'exception
+      const exception = await prisma.expertScheduleException.create({
+        data: {
+          expertId: expert.id,
+          date: new Date(date),
+          type,
+          customSlots: type === 'CUSTOM_HOURS' ? JSON.stringify(customSlots) : null,
+          reason
+        }
+      });
+
+      return ApiResponse.created(res, exception, 'Exception horaire créée avec succès');
+    } catch (error) {
+      console.error('Create schedule exception error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la création de l\'exception horaire');
+    }
+  }
+
+  /**
+   * PHASE 2 - Lister les exceptions horaires de l'expert connecté
+   * @route GET /api/experts/schedule-exceptions
+   * @access Private (Expert only)
+   */
+  static async listScheduleExceptions(req, res) {
+    try {
+      const expert = req.expert || (await prisma.expert.findUnique({ where: { userId: req.user.id } }));
+      if (!expert) {
+        return ApiResponse.forbidden(res, 'Seuls les experts peuvent voir leurs exceptions horaires');
+      }
+
+      const { startDate, endDate } = req.query;
+
+      const where = { expertId: expert.id };
+
+      // Filtrer par plage de dates si fournie
+      if (startDate || endDate) {
+        where.date = {};
+        if (startDate) {
+          where.date.gte = new Date(startDate);
+        }
+        if (endDate) {
+          where.date.lte = new Date(endDate);
+        }
+      }
+
+      const exceptions = await prisma.expertScheduleException.findMany({
+        where,
+        orderBy: { date: 'asc' }
+      });
+
+      // Parser les customSlots JSON
+      const formatted = exceptions.map(exc => {
+        let parsedCustomSlots = null;
+
+        if (exc.customSlots) {
+          if (typeof exc.customSlots === 'string') {
+            try {
+              parsedCustomSlots = JSON.parse(exc.customSlots);
+            } catch (parseError) {
+              console.warn(`Invalid customSlots JSON for schedule exception ${exc.id}:`, parseError);
+            }
+          } else {
+            parsedCustomSlots = exc.customSlots;
+          }
+        }
+
+        return {
+          ...exc,
+          customSlots: parsedCustomSlots
+        };
+      });
+
+      return ApiResponse.success(res, formatted);
+    } catch (error) {
+      console.error('List schedule exceptions error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération des exceptions horaires');
+    }
+  }
+
+  /**
+   * PHASE 2 - Supprimer une exception horaire
+   * @route DELETE /api/experts/schedule-exception/:id
+   * @access Private (Expert only)
+   */
+  static async deleteScheduleException(req, res) {
+    try {
+      const expert = req.expert || (await prisma.expert.findUnique({ where: { userId: req.user.id } }));
+      if (!expert) {
+        return ApiResponse.forbidden(res, 'Seuls les experts peuvent supprimer leurs exceptions horaires');
+      }
+
+      const exceptionId = parseInt(req.params.id);
+
+      // Vérifier que l'exception existe et appartient à l'expert
+      const exception = await prisma.expertScheduleException.findUnique({
+        where: { id: exceptionId }
+      });
+
+      if (!exception) {
+        return ApiResponse.notFound(res, 'Exception horaire non trouvée');
+      }
+
+      if (exception.expertId !== expert.id) {
+        return ApiResponse.forbidden(res, 'Vous ne pouvez supprimer que vos propres exceptions horaires');
+      }
+
+      // Supprimer l'exception
+      await prisma.expertScheduleException.delete({
+        where: { id: exceptionId }
+      });
+
+      return ApiResponse.success(res, null, 'Exception horaire supprimée avec succès');
+    } catch (error) {
+      console.error('Delete schedule exception error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la suppression de l\'exception horaire');
     }
   }
 }

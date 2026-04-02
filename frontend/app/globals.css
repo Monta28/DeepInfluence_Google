@@ -6,3 +6,30 @@
 /* Hide scrollbars for custom scroll containers */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Dark mode: ensure deeper background colors */
+@layer base {
+  .dark {
+    --tw-bg-opacity: 1;
+  }
+  .dark body {
+    background-color: rgb(17 24 39 / var(--tw-bg-opacity)); /* gray-900 */
+  }
+}
+
+/* Fix notification dropdown on mobile */
+@media (max-width: 640px) {
+  .notification-dropdown {
+    max-width: calc(100vw - 2rem);
+    right: 0.5rem !important;
+    left: auto !important;
+  }
+}
+
+/* Ensure dropdowns don't overflow viewport on mobile */
+@media (max-width: 768px) {
+  [data-dropdown] {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+}

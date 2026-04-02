@@ -39,6 +39,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning={true} className="scroll-smooth">
       <body
+        suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} ${pacifico.variable} antialiased bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300`}
       >
         <Providers>

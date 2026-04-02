@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../../services/database');
 const JWTUtils = require('../../utils/jwt');
@@ -12,8 +13,8 @@ class AuthController {
    */
   static async register(req, res) {
     try {
-      const { 
-        firstName, lastName, email, password, userType = 'user'
+      const {
+        firstName, lastName, email, password, userType = 'user', referralCode
       } = req.body;
 
       if (!firstName || !lastName || !email || !password) {
@@ -27,6 +28,12 @@ class AuthController {
         return ApiResponse.badRequest(res, 'Un utilisateur avec cet email existe déjà');
       }
 
+      // Vérifier le code de parrainage si fourni
+      let referrer = null;
+      if (referralCode) {
+        referrer = await prisma.user.findUnique({ where: { referralCode } });
+      }
+
       const hashedPassword = await bcrypt.hash(password, 12);
 
       const user = await prisma.$transaction(async (tx) => {
@@ -38,7 +45,8 @@ class AuthController {
             password: hashedPassword,
             userType,
             avatar: '/images/users/default-avatar.jpg', // <-- Image par défaut
-            coins: 100
+            coins: 100,
+            ...(referrer ? { referredBy: referrer.id, referredAt: new Date() } : {})
           }
         });
 
@@ -57,6 +65,24 @@ class AuthController {
             }
           });
         }
+
+        // Créer le Referral si un parrain valide a été trouvé
+        if (referrer) {
+          const expiresAt = new Date();
+          expiresAt.setMonth(expiresAt.getMonth() + 6);
+
+          await tx.referral.create({
+            data: {
+              referrerId: referrer.id,
+              referredUserId: newUser.id,
+              referralCode,
+              type: userType === 'expert' ? 'expert' : 'user',
+              commissionRate: userType === 'expert' ? 2.5 : 5.0,
+              expiresAt
+            }
+          });
+        }
+
         return newUser;
       });
 
@@ -186,6 +212,86 @@ class AuthController {
     } catch (error) {
       console.error('Refresh token error:', error);
       return ApiResponse.error(res, 'Erreur lors du rafraîchissement du token');
+    }
+  }
+
+  /**
+   * Mot de passe oublié - envoi du lien de réinitialisation
+   */
+  static async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return ApiResponse.badRequest(res, 'Email requis');
+      }
+
+      const user = await prisma.user.findUnique({ where: { email } });
+
+      if (user) {
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { resetToken, resetTokenExpiry }
+        });
+
+        // TODO: Intégrer un service d'envoi d'email
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+        console.log(`[RESET PASSWORD] Lien de réinitialisation pour ${email}: ${resetLink}`);
+      }
+
+      // Toujours retourner succès pour éviter l'énumération d'emails
+      return ApiResponse.success(res, null, 'Si cet email existe, un lien de réinitialisation a été envoyé.');
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la demande de réinitialisation');
+    }
+  }
+
+  /**
+   * Réinitialisation du mot de passe avec token
+   */
+  static async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return ApiResponse.badRequest(res, 'Token et nouveau mot de passe requis');
+      }
+
+      if (newPassword.length < 8) {
+        return ApiResponse.badRequest(res, 'Le mot de passe doit contenir au moins 8 caractères');
+      }
+
+      const user = await prisma.user.findFirst({
+        where: {
+          resetToken: token,
+          resetTokenExpiry: { gt: new Date() }
+        }
+      });
+
+      if (!user) {
+        return ApiResponse.badRequest(res, 'Lien expiré ou invalide');
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          resetToken: null,
+          resetTokenExpiry: null
+        }
+      });
+
+      return ApiResponse.success(res, null, 'Mot de passe réinitialisé avec succès');
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la réinitialisation du mot de passe');
     }
   }
 }

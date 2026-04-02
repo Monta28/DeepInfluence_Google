@@ -134,14 +134,14 @@ export default function AdminDashboardPage() {
               <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
                 <i className={`${stat.icon} text-xl ${stat.textColor}`}></i>
               </div>
-              <i className="ri-arrow-right-up-line text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+              <i className="ri-arrow-right-up-line text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"></i>
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {stat.value.toLocaleString()}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
             {stat.subLabel && (
-              <div className="text-xs text-gray-500 mt-1">{stat.subLabel}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.subLabel}</div>
             )}
           </Link>
         ))}
@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
+            <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
               Aucune donnée
             </div>
           )}
@@ -242,7 +242,7 @@ export default function AdminDashboardPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Derniers Utilisateurs
             </h2>
-            <Link href="/admin/users" className="text-sm text-blue-600 hover:text-blue-700">
+            <Link href="/admin/users" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
               Voir tout
             </Link>
           </div>
@@ -256,7 +256,7 @@ export default function AdminDashboardPage() {
                   <p className="font-medium text-gray-900 dark:text-white truncate">
                     {user.firstName} {user.lastName}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   user.userType === 'expert'
@@ -268,7 +268,7 @@ export default function AdminDashboardPage() {
               </div>
             ))}
             {(!data?.recentUsers || data.recentUsers.length === 0) && (
-              <p className="text-gray-500 text-sm text-center py-4">Aucun utilisateur récent</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">Aucun utilisateur récent</p>
             )}
           </div>
         </div>
@@ -296,7 +296,7 @@ export default function AdminDashboardPage() {
               >
                 <i className={`${item.icon} text-lg`}></i>
                 <span className="flex-1">{item.label}</span>
-                <i className="ri-download-2-line text-gray-400"></i>
+                <i className="ri-download-2-line text-gray-400 dark:text-gray-500"></i>
               </a>
             ))}
           </div>

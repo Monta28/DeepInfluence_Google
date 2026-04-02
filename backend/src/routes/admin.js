@@ -14,6 +14,12 @@ router.get('/overview', AdminController.overview);
 router.get('/experts', AdminController.listExperts);
 router.put('/experts/:id/verify', AdminController.verifyExpert);
 
+// PHASE 2 - KYC Verification management
+router.get('/verifications', AdminController.getAllVerifications);
+router.get('/verifications/pending', AdminController.getPendingVerifications);
+router.get('/verifications/:expertId', AdminController.getVerificationById);
+router.post('/verifications/:expertId/review', AdminController.reviewVerification);
+
 // Users management
 router.get('/users', AdminController.listUsers);
 router.post('/users/:id/ban', AdminController.setUserBanned);
@@ -57,5 +63,9 @@ router.get('/export/appointments.csv', AdminController.exportAppointments);
 router.get('/export/videos.csv', AdminController.exportVideos);
 router.get('/export/formations.csv', AdminController.exportFormations);
 router.get('/export/logs.csv', AdminController.exportLogs);
+
+// PHASE 2 - Expert Payouts Management
+router.get('/payouts', AdminController.listPayouts);
+router.post('/payouts/:id/process', AdminController.processPayout);
 
 module.exports = router;

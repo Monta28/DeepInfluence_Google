@@ -53,4 +53,43 @@ router.post('/:id/purchase', verifyToken, VideoController.purchaseVideo);
  */
 router.post('/', verifyToken, requireExpert, VideoController.createVideo);
 
+/**
+ * @route PUT /api/videos/:id
+ * @desc Modifier une vidéo (Expert)
+ * @access Private (Expert Only)
+ */
+router.put('/:id', verifyToken, requireExpert, VideoController.updateVideo);
+
+/**
+ * @route DELETE /api/videos/:id
+ * @desc Supprimer une vidéo (Expert)
+ * @access Private (Expert Only)
+ */
+router.delete('/:id', verifyToken, requireExpert, VideoController.deleteVideo);
+
+// ==========================================
+// PHASE 2 - NOUVELLES ROUTES
+// ==========================================
+
+/**
+ * @route POST /api/videos/:id/comment
+ * @desc Ajouter un commentaire sur une vidéo
+ * @access Private
+ */
+router.post('/:id/comment', verifyToken, VideoController.addComment);
+
+/**
+ * @route GET /api/videos/:id/comments
+ * @desc Récupérer les commentaires d'une vidéo
+ * @access Public
+ */
+router.get('/:id/comments', VideoController.getComments);
+
+/**
+ * @route POST /api/videos/:id/view
+ * @desc Tracker une vue de vidéo
+ * @access Private (optionalAuth)
+ */
+router.post('/:id/view', optionalAuth, VideoController.trackView);
+
 module.exports = router;

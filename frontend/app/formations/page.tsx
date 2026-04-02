@@ -159,25 +159,25 @@ export default function FormationsPage() {
         <div className="mb-12">
             <div className="relative max-w-lg mx-auto mb-4">
                 <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher une formation..." className="w-full pl-12 pr-4 py-3 border rounded-full"/>
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher une formation..." className="w-full pl-12 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"/>
             </div>
             <div className="flex flex-wrap gap-2 justify-center mb-4">
                 {categories.map((cat) => (
-                    <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-4 py-2 rounded-full text-sm font-medium ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                    <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-4 py-2 rounded-full text-sm font-medium ${selectedCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
                         {cat.name}
                     </button>
                 ))}
             </div>
 
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                <button onClick={() => { setActiveTab('all'); loadFormations(1, true); }} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'all' ? 'bg-white shadow-sm' : ''}`}>Toutes</button>
-                <button onClick={() => { setActiveTab('enrolled'); loadFormations(1, true); }} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'enrolled' ? 'bg-white shadow-sm' : ''}`}>Inscrites</button>
+              <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                <button onClick={() => { setActiveTab('all'); loadFormations(1, true); }} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'all' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>Toutes</button>
+                <button onClick={() => { setActiveTab('enrolled'); loadFormations(1, true); }} className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'enrolled' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>Inscrites</button>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600">Niveau</label>
-                  <select value={levelFilter} onChange={(e)=>{ setLevelFilter(e.target.value as any); }} className="border rounded-lg px-3 py-2">
+                  <label className="text-sm text-gray-600 dark:text-gray-300">Niveau</label>
+                  <select value={levelFilter} onChange={(e)=>{ setLevelFilter(e.target.value as any); }} className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                     <option value="all">Tous</option>
                     <option value="Débutant">Débutant</option>
                     <option value="Intermédiaire">Intermédiaire</option>
@@ -185,16 +185,16 @@ export default function FormationsPage() {
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600">Type</label>
-                  <select value={typeFilter} onChange={(e)=>{ setTypeFilter(e.target.value as any); }} className="border rounded-lg px-3 py-2">
+                  <label className="text-sm text-gray-600 dark:text-gray-300">Type</label>
+                  <select value={typeFilter} onChange={(e)=>{ setTypeFilter(e.target.value as any); }} className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                     <option value="all">Tous</option>
                     <option value="live">En direct</option>
                     <option value="presentiel">Présentiel</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600">À partir du</label>
-                  <input type="date" value={dateFrom} onChange={(e)=>{ setDateFrom(e.target.value); }} className="border rounded-lg px-3 py-2" />
+                  <label className="text-sm text-gray-600 dark:text-gray-300">À partir du</label>
+                  <input type="date" value={dateFrom} onChange={(e)=>{ setDateFrom(e.target.value); }} className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                 </div>
               </div>
             </div>

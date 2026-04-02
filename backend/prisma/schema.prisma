@@ -10,6 +10,107 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// ENUMS - PHASE 2
+// ============================================
+
+enum VideoType {
+  NORMAL
+  REEL
+}
+
+enum AccessType {
+  FREE
+  PAID
+}
+
+enum Orientation {
+  LANDSCAPE
+  PORTRAIT
+}
+
+enum VideoStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum VerificationStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ContentType {
+  VIDEO
+  TEXT
+  QUIZ
+  DOCUMENT
+  LIVE
+}
+
+enum LessonStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  WALLET
+  CARD
+  EDINAR
+  FLOUCI
+}
+
+enum PaymentType {
+  COIN_PURCHASE
+  COURSE_PURCHASE
+  VIDEO_PURCHASE
+  CONSULTATION
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ExceptionType {
+  UNAVAILABLE
+  CUSTOM_HOURS
+}
+
+// ============================================
+// MODELS EXISTANTS (AVEC MODIFICATIONS)
+// ============================================
+
 model User {
   id                 Int      @id @default(autoincrement())
   firstName          String
@@ -19,7 +120,7 @@ model User {
   phone              String?
   bio                String?
   location           String?
-  avatar             String?  // <-- Champ principal pour toutes les images de profil
+  avatar             String?
   userType           String   @default("user")
   banned             Boolean  @default(false)
   joinDate           DateTime @default(now())
@@ -32,6 +133,15 @@ model User {
   formationsFollowed Int      @default(0)
   learningHours      Int      @default(0)
   expertsFollowed    Int      @default(0)
+
+  // PHASE 3 - Parrainage & Reset password
+  referralCode       String?  @unique
+  referredBy         Int?
+  referredAt         DateTime?
+  resetToken         String?
+  resetTokenExpiry   DateTime?
+
+  // Relations
   expert             Expert?
   appointments       Appointment[]
   sentMessages       Message[]     @relation("SentMessages")
@@ -47,124 +157,248 @@ model User {
   favoriteFormations FavoriteFormation[]
   followingExperts   ExpertFollow[]
   auditLogs          AuditLog[]
+
+  // PHASE 2 - Nouvelles relations
+  videoComments      VideoComment[]
+  videoLikes         VideoLike[]
+  enrollments        Enrollment[]
+  payments           Payment[]
+  reviewedExperts    Expert[]       @relation("ExpertReviewer")
+
+  // PHASE 3 - Parrainage relations
+  referralsMade      Referral[]     @relation("ReferralsMade")
+  referralReceived   Referral?      @relation("ReferralReceived")
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
   @@map("users")
 }
 
 model Expert {
-  id                Int      @id @default(autoincrement())
-  userId            Int      @unique
-  name              String
-  nameNormalized    String?
-  specialty         String
-  specialtyNormalized String?
-  rating            Float    @default(0)
-  reviews           Int      @default(0)
-  hourlyRate        Int
-  pricePerMessage   Int
-  // Le champ 'image' est SUPPRIMÉ d'ici
-  isOnline          Boolean  @default(false)
-  nextAvailable     String?
-  tags              String
-  verified          Boolean  @default(false)
-  category          String
-  languages         String
-  responseTime      String?
-  sessions          Int      @default(0)
-  followers         Int      @default(0)
-  description       String?
-  verificationStatus String   @default("NOT_SUBMITTED")
-  identityDocumentType String? 
-  identityDocumentFront String? 
-  identityDocumentBack  String? 
-  selfieWithIdentity    String? 
-  bankDetails           String? 
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @unique
+  name                  String
+  nameNormalized        String?
+  specialty             String
+  specialtyNormalized   String?
+  rating                Float    @default(0)
+  reviews               Int      @default(0)
+  hourlyRate            Int
+  pricePerMessage       Int
+  isOnline              Boolean  @default(false)
+  nextAvailable         String?
+  tags                  String
+  verified              Boolean  @default(false)
+  category              String
+  languages             String
+  responseTime          String?
+  sessions              Int      @default(0)
+  followers             Int      @default(0)
+  description           String?
+
+  // PHASE 3 - Nouveaux champs profil expert
+  minuteRate            Int?                   // Tarif par minute
+  videoMessageRate      Int?       @default(0) // Tarif réponse vidéo
+  country               String?                // Pays
+  linkedinUrl           String?                // Profil LinkedIn
+  rnePatente            String?                // RNE/Patente (optionnel)
+  categories            String?                // JSON array multi-catégories
+
+  // KYC Documents
+  verificationStatus    VerificationStatus @default(NOT_SUBMITTED)
+  identityDocumentType  String?
+  identityDocumentFront String?
+  identityDocumentBack  String?
+  selfieWithIdentity    String?
+  bankDetails           String?
   bankDocument          String?
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  appointments      Appointment[]
-  formations        Formation[]
-  videos            Video[]
-  favoredBy         FavoriteExpert[]
-  followedBy        ExpertFollow[]
-  receivedReviews   Review[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+
+  // PHASE 2 - Nouveaux champs validation KYC
+  verificationNote      String?  @db.Text  // Note interne admin
+  rejectionReason       String?            // Motif de refus (visible expert)
+  submittedAt           DateTime?          // Date soumission KYC
+  reviewedAt            DateTime?          // Date décision admin
+  reviewedBy            Int?               // FK vers User (admin)
+  diplomaUrl            String?            // URL diplôme/certification
+
+  // Disponibilité de l'expert (existant)
+  availableDays         String?  // JSON array
+  availableTimeSlots    String?  // JSON array
+  vacationDays          String?  // JSON array
+  appointmentInterval   Int?     @default(30)
+
+  // PHASE 2 - Nouveaux champs disponibilités avancées
+  bufferTime            Int      @default(5)     // Minutes de pause entre RDV
+  sessionDurations      String   @default("[30,60]") // JSON array: [30, 60, 120]
+  timezone              String   @default("Africa/Tunis")
+  autoConfirm           Boolean  @default(true)
+
+  // Relations
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments          Appointment[]
+  formations            Formation[]
+  videos                Video[]
+  favoredBy             FavoriteExpert[]
+  followedBy            ExpertFollow[]
+  receivedReviews       Review[]
+
+  // PHASE 2 - Nouvelles relations
+  reviewer              User?    @relation("ExpertReviewer", fields: [reviewedBy], references: [id])
+  courses               Course[]
+  payouts               ExpertPayout[]
+  scheduleExceptions    ExpertScheduleException[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
   @@map("experts")
 }
 
 model Formation {
-  id             Int      @id @default(autoincrement())
-  title          String
-  titleNormalized String?
-  instructorId   Int
-  instructor     String
-  instructorNormalized String?
-  duration       String
-  level          String   // 'Débutant' | 'Intermédiaire' | 'Avancé'
-  rating         Float    @default(0)
-  students       Int      @default(0)
-  price          Int
-  type           String   // 'live' | 'presentiel'
-  maxPlaces      Int
-  currentPlaces  Int      @default(0)
-  location       String
-  image          String?
-  tags           String   // JSON array as string
-  nextSession    String?
-  description    String
+  id                    Int      @id @default(autoincrement())
+  title                 String
+  titleNormalized       String?
+  instructorId          Int
+  instructor            String
+  instructorNormalized  String?
+  duration              String
+  level                 String
+  rating                Float    @default(0)
+  students              Int      @default(0)
+  price                 Int
+  type                  String   // 'live' | 'presentiel'
+  maxPlaces             Int
+  currentPlaces         Int      @default(0)
+  location              String
+  image                 String?
+  tags                  String
+  nextSession           String?
+  description           String
   descriptionNormalized String?
-  schedule       String?
-  modules        String?  // JSON array as string
-  category       String
-  objectives     String?  // JSON array as string
-  prerequisites  String?  // JSON array as string
-  included       String?  // JSON array as string
-  tools          String?  // JSON array as string
-  videoConferenceLink String? // Lien de vidéoconférence (accessible uniquement aux inscrits)
+  schedule              String?
+  modules               String?
+  category              String
+  objectives            String?
+  prerequisites         String?
+  included              String?
+  tools                 String?
+  videoConferenceLink   String?
+  videoSessionStartedAt DateTime?
+  videoSessionEndedAt   DateTime?
+
+  // PHASE 2 - Support E-Learning
+  isElearning           Boolean  @default(false)
+  certificateTemplate   String?  // URL template certificat
+
+  // PHASE 3 - Nouveaux champs formation wizard
+  subtitle              String?
+  shortDescription      String?  @db.VarChar(300)
+  learningObjectives    String?                    // JSON array
+  targetAudience        String?
+  subcategory           String?
+  language              String?  @default("Français")
+  totalHours            Int?     @default(0)
+  totalMinutes          Int?     @default(0)
+  totalWeeks            Int?
+  totalModules          Int?
+  frequency             String?                    // "daily"|"2x_week"|"weekend"|"custom"
+  startDate             DateTime?
+  endDate               DateTime?
+  promoCode             String?
+  promoDiscount         Int?                       // % réduction
+  promoMaxUses          Int?
+  promoCurrentUses      Int?     @default(0)
+  maxEnrolled           Int?
+  structuredModules     String?  @db.Text           // JSON: modules + sous-modules
 
   // Relations
-  expert         Expert @relation(fields: [instructorId], references: [id])
-  enrollments    UserFormation[]
-  appointments   Appointment[]
-  reviews        Review[]
-  favoredBy      FavoriteFormation[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  expert                Expert   @relation(fields: [instructorId], references: [id])
+  enrollments           UserFormation[]
+  appointments          Appointment[]
+  reviews               Review[]
+  favoredBy             FavoriteFormation[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
   @@map("formations")
 }
 
 model Video {
-  id          Int      @id @default(autoincrement())
-  title       String
-  titleNormalized String?
-  expertId    Int
-  expert      String
-  expertNormalized String?
-  duration    String
-  views       Int      @default(0)
-  likes       Int      @default(0)
-  category    String
-  type        String   // 'free' | 'premium'
-  price       Int      @default(0)
-  thumbnail   String?
-  expertImage String?
-  publishedAt DateTime @default(now())
-  description String
-  videoUrl    String?
-  
+  id                    Int          @id @default(autoincrement())
+  title                 String
+  titleNormalized       String?
+  expertId              Int
+  expert                String
+  expertNormalized      String?
+  duration              String
+  views                 Int          @default(0)
+  likes                 Int          @default(0)
+  category              String
+
+  // PHASE 2 - Migration progressive du champ type
+  // Ancien champ (à conserver temporairement pour migration)
+  type                  String       // 'free' | 'premium' (DEPRECATED)
+
+  // PHASE 2 - Nouveaux champs
+  videoType             VideoType?   // NORMAL | REEL (nouveau)
+  accessType            AccessType?  // FREE | PAID (nouveau)
+  orientation           Orientation? // LANDSCAPE | PORTRAIT
+  status                VideoStatus  @default(PUBLISHED)
+  descriptionNormalized String?
+
+  price                 Int          @default(0)
+  thumbnail             String?
+  expertImage           String?
+  publishedAt           DateTime     @default(now())
+  description           String
+  videoUrl              String?
+
   // Relations
-  expertRel   Expert @relation(fields: [expertId], references: [id])
-  userHistory UserVideo[]
-  favoredBy   FavoriteVideo[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  expertRel             Expert       @relation(fields: [expertId], references: [id])
+  userHistory           UserVideo[]
+  favoredBy             FavoriteVideo[]
+
+  // PHASE 2 - Nouvelles relations
+  comments              VideoComment[]
+  videoLikes            VideoLike[]
+
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([expertId])
+  @@index([videoType])
+  @@index([status])
   @@map("videos")
 }
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  type        String   // 'purchase' | 'spend' | 'refund' | 'coin_purchase_flouci' | ...
+  amount      Int      // montant en centimes (EUR) ou millimes (TND)
+  coins       Int      // nombre de coins
+  description String
+  relatedId   Int?     // ID de l'appointment, formation, etc.
+
+  // PHASE 2 - Support Flouci
+  currency    String   @default("EUR") // EUR | TND
+  paymentId   String?  // ID paiement Flouci
+
+  // Relations
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([paymentId])
+  @@map("transactions")
+}
+
+// ============================================
+// MODELS EXISTANTS (INCHANGÉS)
+// ============================================
 
 model Appointment {
   id                   Int      @id @default(autoincrement())
@@ -177,7 +411,7 @@ model Appointment {
   duration             String
   price                Int
   coins                Int
-  status               String   // 'confirmed' | 'completed' | 'cancelled'
+  status               String
   category             String
   joinLink             String?
   canJoin              Boolean  @default(false)
@@ -186,33 +420,29 @@ model Appointment {
   review               String?
   certificateAvailable Boolean  @default(false)
   image                String?
-  
-  // Relations
+
   user                 User      @relation(fields: [userId], references: [id])
   expertRel            Expert    @relation(fields: [expertId], references: [id])
   formation            Formation? @relation(fields: [formationId], references: [id])
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  @@map("appointments")
 
+  @@map("appointments")
 }
 
 model Conversation {
   id              Int      @id @default(autoincrement())
   lastMessage     String?
   lastMessageTime DateTime?
-  
-  // Relations
+  isFree          Boolean  @default(false)
+
   participants    ConversationParticipant[]
   messages        Message[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  isFree          Boolean  @default(false)
-  
   @@map("conversations")
 }
 
@@ -221,11 +451,10 @@ model ConversationParticipant {
   conversationId Int
   userId         Int
   unreadCount    Int @default(0)
-  
-  // Relations
+
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@unique([conversationId, userId])
   @@map("conversation_participants")
 }
@@ -238,14 +467,20 @@ model Message {
   content        String
   timestamp      DateTime @default(now())
   isRead         Boolean  @default(false)
-  
-  // Relations
+
+  // PHASE 3 - Chat attachments
+  messageType    String   @default("text") // text|image|voice|video|document
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentSize Int?
+  duration       Int?     // Durée voice/video en secondes
+
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
   receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  
+
   createdAt DateTime @default(now())
-  
+
   @@map("messages")
 }
 
@@ -257,11 +492,10 @@ model UserFormation {
   progress          Int      @default(0)
   completed         Boolean  @default(false)
   certificateIssued Boolean  @default(false)
-  
-  // Relations
+
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   formation         Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, formationId])
   @@map("user_formations")
 }
@@ -271,14 +505,13 @@ model UserVideo {
   userId    Int
   videoId   Int
   watchedAt DateTime @default(now())
-  watchTime Int      @default(0) // en secondes
+  watchTime Int      @default(0)
   completed Boolean  @default(false)
   liked     Boolean  @default(false)
-  
-  // Relations
+
   user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   video     Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, videoId])
   @@map("user_videos")
 }
@@ -291,14 +524,13 @@ model Review {
   formationId   Int?
   rating        Int
   comment       String
-  
-  // Relations
+
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   expert        Expert?    @relation(fields: [expertId], references: [id], onDelete: Cascade)
   formation     Formation? @relation(fields: [formationId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
-  
+
   @@map("reviews")
 }
 
@@ -310,50 +542,38 @@ model Notification {
   type      String
   isRead    Boolean  @default(false)
   actionUrl String?
-  
-  // Relations
+
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
-  
+
   @@map("notifications")
 }
 
-model Transaction {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  type        String   // 'purchase' | 'spend' | 'refund'
-  amount      Int      // montant en euros (centimes)
-  coins       Int      // nombre de coins
-  description String
-  relatedId   Int?     // ID de l'appointment, formation, etc.
-  
-  // Relations
-  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  
-  @@map("transactions")
-}
-
 model FavoriteExpert {
-  id        Int   @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   userId    Int
   expertId  Int
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expert    Expert @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expert    Expert   @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
+
   @@unique([userId, expertId])
   @@map("favorite_experts")
 }
 
 model FavoriteFormation {
-  id          Int   @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   userId      Int
   formationId Int
+
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+
   createdAt   DateTime @default(now())
+
   @@unique([userId, formationId])
   @@map("favorite_formations")
 }
@@ -362,9 +582,12 @@ model FavoriteVideo {
   id        Int      @id @default(autoincrement())
   userId    Int
   videoId   Int
+
   user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   video     Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
+
   @@unique([userId, videoId])
   @@map("favorite_videos")
 }
@@ -373,8 +596,10 @@ model ExpertFollow {
   id        Int      @id @default(autoincrement())
   userId    Int
   expertId  Int
+
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expert    Expert   @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
 
   @@unique([userId, expertId])
@@ -390,6 +615,7 @@ model AuditLog {
   details    String?
 
   admin      User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
   createdAt  DateTime @default(now())
 
   @@map("audit_logs")
@@ -427,4 +653,243 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+// ============================================
+// NOUVEAUX MODELS - PHASE 2
+// ============================================
+
+// -------- MODULE VIDÉO COMMENTAIRES & LIKES --------
+
+model VideoComment {
+  id        Int      @id @default(autoincrement())
+  videoId   Int
+  userId    Int
+  content   String   @db.Text
+  parentId  Int?     // Pour réponses à un commentaire
+
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    VideoComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   VideoComment[] @relation("CommentReplies")
+
+  createdAt DateTime @default(now())
+
+  @@index([videoId])
+  @@index([userId])
+  @@map("video_comments")
+}
+
+model VideoLike {
+  id        Int      @id @default(autoincrement())
+  videoId   Int
+  userId    Int
+
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([videoId, userId])
+  @@index([videoId])
+  @@map("video_likes")
+}
+
+// -------- MODULE E-LEARNING --------
+
+model Course {
+  id                  Int          @id @default(autoincrement())
+  title               String
+  description         String       @db.Text
+  expertId            Int
+  category            String
+  level               CourseLevel  @default(BEGINNER)
+  price               Decimal      @db.Decimal(10, 2)
+  priceCoins          Int?
+  thumbnail           String?
+  rating              Decimal      @default(0) @db.Decimal(3, 2)
+  totalStudents       Int          @default(0)
+  totalDuration       Int          @default(0) // minutes
+  status              CourseStatus @default(DRAFT)
+  certificateEnabled  Boolean      @default(true)
+
+  expert              Expert       @relation(fields: [expertId], references: [id])
+  modules             CourseModule[]
+  enrollments         Enrollment[]
+
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([expertId])
+  @@index([status])
+  @@map("courses")
+}
+
+model CourseModule {
+  id          Int      @id @default(autoincrement())
+  courseId    Int
+  title       String
+  description String?
+  order       Int
+
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+
+  @@index([courseId])
+  @@map("course_modules")
+}
+
+model Lesson {
+  id          Int         @id @default(autoincrement())
+  moduleId    Int
+  title       String
+  contentType ContentType
+  videoUrl    String?
+  textContent String?     @db.Text
+  attachments String?     // JSON [{name, url, type}]
+  duration    Int         @default(0) // minutes
+  order       Int
+  isFree      Boolean     @default(false)
+
+  module      CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress    LessonProgress[]
+
+  @@index([moduleId])
+  @@map("lessons")
+}
+
+model Enrollment {
+  id            Int              @id @default(autoincrement())
+  userId        Int
+  courseId      Int
+  progress      Decimal          @default(0) @db.Decimal(5, 2) // 0-100%
+  status        EnrollmentStatus @default(ACTIVE)
+  enrolledAt    DateTime         @default(now())
+  completedAt   DateTime?
+  certificateUrl String?
+
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course        Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id            Int          @id @default(autoincrement())
+  enrollmentId  Int
+  lessonId      Int
+  status        LessonStatus @default(NOT_STARTED)
+  videoPosition Int?         // secondes
+  quizScore     Int?         // pourcentage (0-100)
+  timeSpent     Int          @default(0) // secondes
+  completedAt   DateTime?
+
+  enrollment    Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson        Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId])
+  @@map("lesson_progress")
+}
+
+// -------- MODULE PAIEMENT FLOUCI --------
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  userId          Int
+  flouciPaymentId String?       @unique
+  amount          Int           // millimes (TND × 1000)
+  amountTND       Decimal       @db.Decimal(10, 3)
+  coins           Int           @default(0) // nombre de coins achetés
+  currency        String        @default("TND")
+  status          PaymentStatus @default(PENDING)
+  paymentMethod   PaymentMethod?
+  type            PaymentType
+  relatedId       Int?          // ID cours/vidéo/etc.
+  metadata        String?       @db.Text // JSON Flouci response
+  failureReason   String?       // Raison d'échec
+
+  user            User          @relation(fields: [userId], references: [id])
+
+  createdAt       DateTime      @default(now())
+  completedAt     DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model CoinPack {
+  id       Int     @id @default(autoincrement())
+  name     String
+  coins    Int
+  priceTND Decimal @db.Decimal(10, 2)
+  bonus    Int     @default(0)
+  popular  Boolean @default(false)
+  active   Boolean @default(true)
+
+  @@map("coin_packs")
+}
+
+model ExpertPayout {
+  id          Int          @id @default(autoincrement())
+  expertId    Int
+  amount      Decimal      @db.Decimal(10, 2) // TND
+  commission  Decimal      @db.Decimal(10, 2) // TND (plateforme)
+  netAmount   Decimal      @db.Decimal(10, 2) // TND (expert reçoit)
+  status      PayoutStatus @default(PENDING)
+  bankDetails String       @db.Text // JSON
+  period      String       // ex: "2026-02"
+  processedAt DateTime?
+
+  expert      Expert       @relation(fields: [expertId], references: [id])
+
+  createdAt   DateTime     @default(now())
+
+  @@index([expertId])
+  @@index([status])
+  @@map("expert_payouts")
+}
+
+// -------- MODULE DISPONIBILITÉS AVANCÉES --------
+
+model ExpertScheduleException {
+  id          Int           @id @default(autoincrement())
+  expertId    Int
+  date        DateTime      @db.Date
+  type        ExceptionType
+  customSlots String?       // JSON [{start, end}]
+  reason      String?
+
+  expert      Expert        @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  @@index([expertId, date])
+  @@map("expert_schedule_exceptions")
+}
+
+// -------- MODULE PARRAINAGE - PHASE 3 --------
+
+model Referral {
+  id             Int      @id @default(autoincrement())
+  referrerId     Int
+  referredUserId Int      @unique
+  referralCode   String
+  type           String                          // "user"|"expert"
+  commissionRate Decimal  @db.Decimal(5, 2)       // 5.00 ou 2.50
+  expiresAt      DateTime                         // 6 mois après parrainage
+  totalEarnings  Decimal  @default(0) @db.Decimal(10, 2)
+  isActive       Boolean  @default(true)
+
+  referrer       User     @relation("ReferralsMade", fields: [referrerId], references: [id])
+  referredUser   User     @relation("ReferralReceived", fields: [referredUserId], references: [id])
+
+  createdAt      DateTime @default(now())
+
+  @@index([referrerId])
+  @@index([referralCode])
+  @@map("referrals")
 }

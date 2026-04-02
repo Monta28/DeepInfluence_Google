@@ -113,7 +113,7 @@ class MessageController {
   static async sendMessage(req, res) {
     try {
       const { conversationId } = req.params;
-      const { content, receiverId } = req.body;
+      const { content, receiverId, messageType, attachmentUrl, attachmentName, attachmentSize, duration } = req.body;
       const senderId = req.user.id;
 
       const result = await prisma.$transaction(async (tx) => {
@@ -131,15 +131,20 @@ class MessageController {
           parseInt(receiverId),
           conversation.isFree
         );
-        // Création du message
-        const message = await tx.message.create({
-          data: {
-            conversationId: parseInt(conversationId),
-            senderId,
-            receiverId: parseInt(receiverId),
-            content
-          }
-        });
+        // Création du message avec support attachments
+        const messageData = {
+          conversationId: parseInt(conversationId),
+          senderId,
+          receiverId: parseInt(receiverId),
+          content: content || '',
+          messageType: messageType || 'text',
+        };
+        if (attachmentUrl) messageData.attachmentUrl = attachmentUrl;
+        if (attachmentName) messageData.attachmentName = attachmentName;
+        if (attachmentSize) messageData.attachmentSize = parseInt(attachmentSize);
+        if (duration) messageData.duration = parseInt(duration);
+
+        const message = await tx.message.create({ data: messageData });
         // Incrémenter le compteur d'UNREAD pour le destinataire
         const updatedParticipant = await tx.conversationParticipant.update({
           where: {
@@ -151,9 +156,10 @@ class MessageController {
           data: { unreadCount: { increment: 1 } }
         });
         // Mise à jour de la conversation
+        const lastMsgPreview = messageType === 'image' ? '📷 Image' : messageType === 'voice' ? '🎤 Message vocal' : messageType === 'video' ? '🎥 Vidéo' : messageType === 'document' ? '📄 Document' : content;
         await tx.conversation.update({
           where: { id: parseInt(conversationId) },
-          data: { lastMessage: content, lastMessageTime: new Date() }
+          data: { lastMessage: lastMsgPreview, lastMessageTime: new Date() }
         });
         // Récupérer le message avec l'avatar de l'expéditeur
         const messageWithSender = await tx.message.findUnique({

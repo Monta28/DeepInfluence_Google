@@ -49,13 +49,13 @@ export default function ExpertCategories() {
   ];
 
   return (
-    <section className="py-24 bg-white">
+    <section className="py-24 bg-white dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Explorez nos domaines d'expertise
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
             Découvrez notre catalogue d'experts vérifiés dans tous les domaines qui vous intéressent.
           </p>
         </div>
@@ -63,10 +63,10 @@ export default function ExpertCategories() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {categories.map((category, index) => (
             <Link key={index} href={`/experts/${category.name.toLowerCase().replace(' ', '-')}`} className="group cursor-pointer">
-              <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700">
                 <div className="relative h-48 overflow-hidden">
-                  <img 
-                    src={category.image} 
+                  <img
+                    src={category.image}
                     alt={category.name}
                     className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                   />
@@ -77,16 +77,28 @@ export default function ExpertCategories() {
                     <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${category.color} flex items-center justify-center`}>
                       <i className={`${category.icon} text-white text-lg`}></i>
                     </div>
-                    <span className="text-sm text-gray-500">{category.expertCount} experts</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{category.expertCount} experts</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{category.name}</h3>
-                  <p className="text-gray-600 text-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{category.name}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
                     Consultez nos experts certifiés en {category.name.toLowerCase()}
                   </p>
                 </div>
               </div>
             </Link>
           ))}
+        </div>
+
+        {/* Additional categories grid */}
+        <div className="mt-12 bg-gray-50 dark:bg-gray-800 rounded-2xl p-8">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Tous les domaines</h3>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {['Comptabilité','Addiction','Publicité','Agriculture','Intelligence Artificielle','Architecture','Art','Automatisation','Automobile','Aviation','Beauté','Biologie','Bitcoin','Coaching','Communication','Construction','Création de contenu','Cuisine','Crypto','Cybersécurité','Danse','Design graphique','Développement web','Dropshipping','E-commerce','Économie','Éducation','Énergie','Entrepreneuriat','Environnement','Freelance','Gaming','Immobilier','Ingénierie logicielle','Investissement','Juridique','Leadership','Machine Learning','Médical','Méditation','Mode','Musique','Photographie','Podcasting','Psychologie','Réseaux sociaux','Robotique','Santé mentale','Sport','Startups','Supply Chain','Trading','Transport & Logistique','Voyage','Yoga'].map((cat) => (
+              <Link key={cat} href={`/experts?category=${encodeURIComponent(cat)}`} className="px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full text-sm hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors border border-gray-200 dark:border-gray-600">
+                {cat}
+              </Link>
+            ))}
+          </div>
         </div>
 
         <div className="text-center mt-12">

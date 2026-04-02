@@ -323,7 +323,32 @@ export default function ChatInterface() {
                   );
                 })()}
                 <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${msg.senderId === user?.id ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-200 text-gray-900 rounded-bl-none'}`}>
-                  <p className="text-sm">{msg.content}</p>
+                  {msg.messageType === 'image' && msg.attachmentUrl ? (
+                    <div>
+                      <img src={msg.attachmentUrl} alt={msg.attachmentName || 'Image'} className="max-w-xs rounded-lg mb-1 cursor-pointer" onClick={() => window.open(msg.attachmentUrl, '_blank')} />
+                      {msg.content && msg.content !== msg.attachmentName && <p className="text-sm">{msg.content}</p>}
+                    </div>
+                  ) : msg.messageType === 'voice' && msg.attachmentUrl ? (
+                    <div>
+                      <audio controls src={msg.attachmentUrl} className="max-w-xs" />
+                      {msg.duration && <p className="text-xs opacity-70 mt-1">{Math.floor(msg.duration / 60)}:{String(msg.duration % 60).padStart(2,'0')}</p>}
+                    </div>
+                  ) : msg.messageType === 'video' && msg.attachmentUrl ? (
+                    <div>
+                      <video controls src={msg.attachmentUrl} className="max-w-xs rounded-lg" />
+                    </div>
+                  ) : msg.messageType === 'document' && msg.attachmentUrl ? (
+                    <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+                      <i className="ri-file-line text-xl"></i>
+                      <div>
+                        <p className="text-sm font-medium">{msg.attachmentName || 'Document'}</p>
+                        {msg.attachmentSize && <p className="text-xs opacity-70">{(msg.attachmentSize / 1024).toFixed(0)} Ko</p>}
+                      </div>
+                      <i className="ri-download-line ml-auto"></i>
+                    </a>
+                  ) : (
+                    <p className="text-sm">{msg.content}</p>
+                  )}
                   {msg.senderId === user?.id && (
                     <div className="mt-1 text-[10px] opacity-80 text-right">{msg.isRead ? 'Lu' : 'Envoyé'}</div>
                   )}
@@ -332,15 +357,51 @@ export default function ChatInterface() {
             ))}
           </div>
 
-          {/* Message Input (hauteur fixe) */}
-          <footer className="p-6 border-t bg-white rounded-b-lg flex-shrink-0">
-            <form onSubmit={handleSendMessage} className="flex items-center space-x-4">
+          {/* Message Input with attachment support */}
+          <footer className="p-4 border-t bg-white dark:bg-gray-800 rounded-b-lg flex-shrink-0">
+            <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+              {/* Attachment button */}
+              <input
+                type="file"
+                id="chat-attachment"
+                className="hidden"
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !conversation || !otherParticipant) return;
+                  setSubmitting(true);
+                  try {
+                    const uploadRes = await ApiService.uploadChatAttachment(file);
+                    if (uploadRes.success && uploadRes.data) {
+                      const mimeType = file.type;
+                      let msgType = 'document';
+                      if (mimeType.startsWith('image/')) msgType = 'image';
+                      else if (mimeType.startsWith('video/')) msgType = 'video';
+                      else if (mimeType.startsWith('audio/')) msgType = 'voice';
+                      const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                      const res = await ApiService.sendMessage(conversation.id, otherParticipant.id, file.name, {
+                        messageType: msgType,
+                        attachmentUrl: `${backendBase}${uploadRes.data.url}`,
+                        attachmentName: uploadRes.data.filename,
+                        attachmentSize: uploadRes.data.size
+                      });
+                      if (res.success) {
+                        setMessages((prev: any[]) => prev.some((m: any) => m.id === res.data.id) ? prev : [...prev, res.data]);
+                      }
+                    }
+                  } catch (err: any) { alert(err.message || 'Erreur upload'); }
+                  finally { setSubmitting(false); e.target.value = ''; }
+                }}
+              />
+              <button type="button" onClick={() => document.getElementById('chat-attachment')?.click()} className="w-10 h-10 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Joindre un fichier">
+                <i className="ri-attachment-2 text-xl"></i>
+              </button>
               <input
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Tapez votre message..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 autoComplete="off"
               />
               <button

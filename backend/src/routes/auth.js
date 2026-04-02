@@ -11,6 +11,8 @@ router.post('/login', AuthController.login);
 router.get('/me', verifyToken, AuthController.me);
 router.post('/logout', verifyToken, AuthController.logout);
 router.post('/refresh', verifyToken, AuthController.refreshToken);
+router.post('/forgot-password', AuthController.forgotPassword);
+router.post('/reset-password', AuthController.resetPassword);
 
 // --- CORRECTION POUR GOOGLE ---
 // Route pour initier l'authentification Google

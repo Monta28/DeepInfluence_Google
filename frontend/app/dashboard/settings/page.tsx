@@ -6,7 +6,7 @@ import AppHeader from '@/components/AppHeader';
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('notifications');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+
   const [notificationSettings, setNotificationSettings] = useState({
     messages: true,
     appointments: true,
@@ -76,7 +76,7 @@ export default function SettingsPage() {
       formations: 8,
       messages: 156
     };
-    
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -87,17 +87,17 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppHeader />
-      
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Paramètres</h1>
-          <p className="text-gray-600 mt-2">Gérez vos préférences et la configuration de votre compte</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Paramètres</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">Gérez vos préférences et la configuration de votre compte</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border">
-          <div className="border-b p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="border-b border-gray-200 dark:border-gray-700 p-6">
             <div className="flex flex-wrap gap-2">
               {tabs.map((tab) => (
                 <button
@@ -106,7 +106,7 @@ export default function SettingsPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer flex items-center space-x-2 ${
                     activeTab === tab.id
                       ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
                   <i className={`${tab.icon} text-lg`}></i>
@@ -120,12 +120,12 @@ export default function SettingsPage() {
             {activeTab === 'notifications' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Notifications par type</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notifications par type</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Messages</label>
-                        <p className="text-sm text-gray-600">Recevoir des notifications pour les nouveaux messages</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Messages</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Recevoir des notifications pour les nouveaux messages</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -134,14 +134,14 @@ export default function SettingsPage() {
                           onChange={(e) => handleNotificationChange('messages', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Rendez-vous</label>
-                        <p className="text-sm text-gray-600">Rappels et notifications de rendez-vous</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Rendez-vous</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Rappels et notifications de rendez-vous</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -150,14 +150,14 @@ export default function SettingsPage() {
                           onChange={(e) => handleNotificationChange('appointments', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Formations</label>
-                        <p className="text-sm text-gray-600">Nouvelles formations et mises à jour</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Formations</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Nouvelles formations et mises à jour</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -166,14 +166,14 @@ export default function SettingsPage() {
                           onChange={(e) => handleNotificationChange('formations', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Marketing</label>
-                        <p className="text-sm text-gray-600">Offres spéciales et promotions</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Marketing</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Offres spéciales et promotions</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -182,19 +182,19 @@ export default function SettingsPage() {
                           onChange={(e) => handleNotificationChange('marketing', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Canaux de notification</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Canaux de notification</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Email</label>
-                        <p className="text-sm text-gray-600">Notifications par email</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Email</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Notifications par email</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -203,14 +203,14 @@ export default function SettingsPage() {
                           onChange={(e) => handleNotificationChange('emailNotifications', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Push</label>
-                        <p className="text-sm text-gray-600">Notifications push sur votre appareil</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Push</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Notifications push sur votre appareil</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -219,14 +219,14 @@ export default function SettingsPage() {
                           onChange={(e) => handleNotificationChange('pushNotifications', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">SMS</label>
-                        <p className="text-sm text-gray-600">Notifications par SMS (urgent uniquement)</p>
+                        <label className="font-medium text-gray-900 dark:text-white">SMS</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Notifications par SMS (urgent uniquement)</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -235,7 +235,7 @@ export default function SettingsPage() {
                           onChange={(e) => handleNotificationChange('smsNotifications', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   </div>
@@ -246,12 +246,12 @@ export default function SettingsPage() {
             {activeTab === 'privacy' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Visibilité du profil</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Visibilité du profil</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Profil public</label>
-                        <p className="text-sm text-gray-600">Permettre aux autres de voir votre profil</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Profil public</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Permettre aux autres de voir votre profil</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -260,14 +260,14 @@ export default function SettingsPage() {
                           onChange={(e) => handlePrivacyChange('profileVisible', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Statut en ligne</label>
-                        <p className="text-sm text-gray-600">Afficher votre statut en ligne aux experts</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Statut en ligne</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Afficher votre statut en ligne aux experts</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -276,14 +276,14 @@ export default function SettingsPage() {
                           onChange={(e) => handlePrivacyChange('onlineStatus', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Historique d'activité</label>
-                        <p className="text-sm text-gray-600">Enregistrer votre activité sur la plateforme</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Historique d'activité</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Enregistrer votre activité sur la plateforme</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -292,14 +292,14 @@ export default function SettingsPage() {
                           onChange={(e) => handlePrivacyChange('activityHistory', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Recherche publique</label>
-                        <p className="text-sm text-gray-600">Apparaître dans les résultats de recherche</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Recherche publique</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Apparaître dans les résultats de recherche</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -308,19 +308,19 @@ export default function SettingsPage() {
                           onChange={(e) => handlePrivacyChange('searchable', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations de contact</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Informations de contact</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Afficher l'email</label>
-                        <p className="text-sm text-gray-600">Permettre aux experts de voir votre email</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Afficher l'email</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Permettre aux experts de voir votre email</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -329,14 +329,14 @@ export default function SettingsPage() {
                           onChange={(e) => handlePrivacyChange('showEmail', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Afficher le téléphone</label>
-                        <p className="text-sm text-gray-600">Permettre aux experts de voir votre téléphone</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Afficher le téléphone</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Permettre aux experts de voir votre téléphone</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -345,7 +345,7 @@ export default function SettingsPage() {
                           onChange={(e) => handlePrivacyChange('showPhone', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   </div>
@@ -356,12 +356,12 @@ export default function SettingsPage() {
             {activeTab === 'preferences' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Lecture vidéo</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Lecture vidéo</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Lecture automatique</label>
-                        <p className="text-sm text-gray-600">Lancer automatiquement les vidéos</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Lecture automatique</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Lancer automatiquement les vidéos</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -370,16 +370,16 @@ export default function SettingsPage() {
                           onChange={(e) => handlePreferenceChange('autoplayVideos', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div>
-                      <label className="font-medium text-gray-900 mb-2 block">Qualité vidéo</label>
+                      <label className="font-medium text-gray-900 dark:text-white mb-2 block">Qualité vidéo</label>
                       <select
                         value={preferenceSettings.videoQuality}
                         onChange={(e) => handlePreferenceChange('videoQuality', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 bg-white dark:bg-gray-700 dark:text-white"
                       >
                         <option value="auto">Automatique</option>
                         <option value="720p">720p</option>
@@ -391,12 +391,12 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historique et données</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Historique et données</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Afficher l'historique</label>
-                        <p className="text-sm text-gray-600">Conserver l'historique de vos activités</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Afficher l'historique</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Conserver l'historique de vos activités</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -405,14 +405,14 @@ export default function SettingsPage() {
                           onChange={(e) => handlePreferenceChange('showHistory', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Sauvegarder la progression</label>
-                        <p className="text-sm text-gray-600">Enregistrer votre progression dans les formations</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Sauvegarder la progression</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Enregistrer votre progression dans les formations</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -421,19 +421,19 @@ export default function SettingsPage() {
                           onChange={(e) => handlePreferenceChange('saveProgress', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Interface</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Interface</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Mode sombre</label>
-                        <p className="text-sm text-gray-600">Utiliser le thème sombre</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Mode sombre</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Utiliser le thème sombre</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -442,14 +442,14 @@ export default function SettingsPage() {
                           onChange={(e) => handlePreferenceChange('darkMode', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Mode compact</label>
-                        <p className="text-sm text-gray-600">Affichage plus dense</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Mode compact</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Affichage plus dense</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -458,7 +458,7 @@ export default function SettingsPage() {
                           onChange={(e) => handlePreferenceChange('compactMode', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   </div>
@@ -469,14 +469,14 @@ export default function SettingsPage() {
             {activeTab === 'account' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Paramètres régionaux</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Paramètres régionaux</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Langue</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Langue</label>
                       <select
                         value={accountSettings.language}
                         onChange={(e) => handleAccountChange('language', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 bg-white dark:bg-gray-700 dark:text-white"
                       >
                         <option value="fr">Français</option>
                         <option value="en">English</option>
@@ -486,11 +486,11 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Fuseau horaire</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Fuseau horaire</label>
                       <select
                         value={accountSettings.timezone}
                         onChange={(e) => handleAccountChange('timezone', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 bg-white dark:bg-gray-700 dark:text-white"
                       >
                         <option value="Europe/Paris">Europe/Paris</option>
                         <option value="Europe/London">Europe/London</option>
@@ -500,11 +500,11 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Devise</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Devise</label>
                       <select
                         value={accountSettings.currency}
                         onChange={(e) => handleAccountChange('currency', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-8 bg-white dark:bg-gray-700 dark:text-white"
                       >
                         <option value="EUR">Euro (€)</option>
                         <option value="USD">Dollar US ($)</option>
@@ -516,12 +516,12 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Sécurité</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sécurité</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <label className="font-medium text-gray-900">Authentification à deux facteurs</label>
-                        <p className="text-sm text-gray-600">Ajouter une couche de sécurité supplémentaire</p>
+                        <label className="font-medium text-gray-900 dark:text-white">Authentification à deux facteurs</label>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Ajouter une couche de sécurité supplémentaire</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -530,7 +530,7 @@ export default function SettingsPage() {
                           onChange={(e) => handleAccountChange('twoFactorAuth', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
@@ -558,7 +558,7 @@ export default function SettingsPage() {
                       <p className="text-purple-100">Devenez un expert sur notre plateforme</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <label className="font-medium text-white">Activer le mode expert</label>
@@ -577,24 +577,24 @@ export default function SettingsPage() {
                 </div>
 
                 {accountSettings.expertMode && (
-                  <div className="bg-green-50 rounded-lg p-6 border border-green-200">
-                    <h4 className="font-semibold text-green-900 mb-2">Félicitations ! Mode expert activé</h4>
-                    <p className="text-green-700 mb-4">Vous avez maintenant accès aux fonctionnalités d'expert :</p>
-                    <ul className="space-y-2 text-green-700">
+                  <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-6 border border-green-200 dark:border-green-700">
+                    <h4 className="font-semibold text-green-900 dark:text-green-300 mb-2">Félicitations ! Mode expert activé</h4>
+                    <p className="text-green-700 dark:text-green-400 mb-4">Vous avez maintenant accès aux fonctionnalités d'expert :</p>
+                    <ul className="space-y-2 text-green-700 dark:text-green-400">
                       <li className="flex items-center space-x-2">
-                        <i className="ri-check-line text-green-600"></i>
+                        <i className="ri-check-line text-green-600 dark:text-green-400"></i>
                         <span>Créer et publier des formations</span>
                       </li>
                       <li className="flex items-center space-x-2">
-                        <i className="ri-check-line text-green-600"></i>
+                        <i className="ri-check-line text-green-600 dark:text-green-400"></i>
                         <span>Proposer des consultations</span>
                       </li>
                       <li className="flex items-center space-x-2">
-                        <i className="ri-check-line text-green-600"></i>
+                        <i className="ri-check-line text-green-600 dark:text-green-400"></i>
                         <span>Publier des vidéos courtes</span>
                       </li>
                       <li className="flex items-center space-x-2">
-                        <i className="ri-check-line text-green-600"></i>
+                        <i className="ri-check-line text-green-600 dark:text-green-400"></i>
                         <span>Gérer vos tarifs et disponibilités</span>
                       </li>
                     </ul>
@@ -605,15 +605,15 @@ export default function SettingsPage() {
 
             {activeTab === 'danger' && (
               <div className="space-y-6">
-                <div className="bg-red-50 rounded-lg p-6 border border-red-200">
-                  <h3 className="text-lg font-semibold text-red-900 mb-4">Zone Dangereuse</h3>
-                  <p className="text-red-700 mb-6">Les actions suivantes sont irréversibles. Procédez avec prudence.</p>
-                  
+                <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-6 border border-red-200 dark:border-red-700">
+                  <h3 className="text-lg font-semibold text-red-900 dark:text-red-300 mb-4">Zone Dangereuse</h3>
+                  <p className="text-red-700 dark:text-red-400 mb-6">Les actions suivantes sont irréversibles. Procédez avec prudence.</p>
+
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-200">
+                    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-700">
                       <div>
-                        <h4 className="font-medium text-gray-900">Exporter mes données</h4>
-                        <p className="text-sm text-gray-600">Télécharger toutes vos données personnelles</p>
+                        <h4 className="font-medium text-gray-900 dark:text-white">Exporter mes données</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Télécharger toutes vos données personnelles</p>
                       </div>
                       <button
                         onClick={exportData}
@@ -623,10 +623,10 @@ export default function SettingsPage() {
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-200">
+                    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-700">
                       <div>
-                        <h4 className="font-medium text-gray-900">Supprimer mon compte</h4>
-                        <p className="text-sm text-gray-600">Suppression définitive de votre compte et données</p>
+                        <h4 className="font-medium text-gray-900 dark:text-white">Supprimer mon compte</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Suppression définitive de votre compte et données</p>
                       </div>
                       <button
                         onClick={() => setShowDeleteModal(true)}
@@ -645,26 +645,26 @@ export default function SettingsPage() {
 
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <i className="ri-error-warning-line text-red-600 text-xl"></i>
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center">
+                <i className="ri-error-warning-line text-red-600 dark:text-red-400 text-xl"></i>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Supprimer le compte</h3>
-                <p className="text-gray-600 text-sm">Cette action est irréversible</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Supprimer le compte</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Cette action est irréversible</p>
               </div>
             </div>
-            
-            <p className="text-gray-700 mb-6">
-              Êtes-vous sûr de vouloir supprimer définitivement votre compte ? 
+
+            <p className="text-gray-700 dark:text-gray-200 mb-6">
+              Êtes-vous sûr de vouloir supprimer définitivement votre compte ?
               Toutes vos données seront perdues et ne pourront pas être récupérées.
             </p>
-            
+
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors whitespace-nowrap cursor-pointer"
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors whitespace-nowrap cursor-pointer"
               >
                 Annuler
               </button>

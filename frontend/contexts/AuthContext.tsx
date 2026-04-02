@@ -99,6 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     email: string;
     password: string;
     userType?: string;
+    referralCode?: string;
   }) => {
     try {
       const response = await ApiService.register(userData);

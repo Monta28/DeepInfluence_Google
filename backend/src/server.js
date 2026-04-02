@@ -18,6 +18,9 @@ const expertRoutes = require('./routes/experts');
 const messageRoutes = require('./routes/messages');
 const formationRoutes = require('./routes/formations');
 const videoRoutes = require('./routes/videos');
+const reelRoutes = require('./routes/reels'); // PHASE 2
+const courseRoutes = require('./routes/courses'); // PHASE 2
+const paymentRoutes = require('./routes/payments'); // PHASE 2
 const appointmentRoutes = require('./routes/appointments');
 const statsRoutes = require('./routes/stats'); 
 const reviewRoutes = require('./routes/reviews');
@@ -28,6 +31,7 @@ const favoritesRoutes = require('./routes/favorites');
 const assetsRoutes = require('./routes/assets');
 const videoSessionRoutes = require('./routes/videoSessions');
 const settingsRoutes = require('./routes/settings');
+const referralRoutes = require('./routes/referrals');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -183,6 +187,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/experts', expertRoutes);
 app.use('/api/formations', formationRoutes);
 app.use('/api/videos', videoRoutes);
+app.use('/api/reels', reelRoutes); // PHASE 2
+app.use('/api/courses', courseRoutes); // PHASE 2
+app.use('/api/payments', paymentRoutes); // PHASE 2
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/stats', statsRoutes); 
@@ -194,6 +201,7 @@ app.use('/api/favorites', favoritesRoutes);
 app.use('/api/assets', assetsRoutes);
 app.use('/api/video', videoSessionRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/referrals', referralRoutes);
 
 // Gestion des erreurs
 app.use(errorHandler);

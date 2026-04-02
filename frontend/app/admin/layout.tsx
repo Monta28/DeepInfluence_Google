@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { href: '/admin', label: 'Tableau de bord', icon: 'ri-dashboard-3-line' },
   { href: '/admin/users', label: 'Utilisateurs', icon: 'ri-team-line' },
   { href: '/admin/experts', label: 'Experts', icon: 'ri-user-star-line' },
+  { href: '/admin/payouts', label: 'Payouts', icon: 'ri-money-dollar-circle-line' },
   { href: '/admin/content', label: 'Contenu', icon: 'ri-folder-2-line' },
   { href: '/admin/appointments', label: 'Rendez-vous', icon: 'ri-calendar-check-line' },
   { href: '/admin/transactions', label: 'Transactions', icon: 'ri-exchange-funds-line' },
@@ -105,13 +106,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {sidebarOpen && (
               <div>
                 <span className="font-bold text-gray-900 dark:text-white">DeepInfluence</span>
-                <p className="text-xs text-gray-500">Administration</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Administration</p>
               </div>
             )}
           </Link>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden lg:flex p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
+            className="hidden lg:flex p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
           >
             <i className={`ri-${sidebarOpen ? 'menu-fold' : 'menu-unfold'}-line`}></i>
           </button>
@@ -164,7 +165,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user.firstName} {user.lastName}
                 </p>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
               </div>
             )}
           </div>

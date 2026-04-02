@@ -44,10 +44,45 @@ router.get('/enrollments/export.csv', verifyToken, requireExpert, FormationContr
 router.post('/', verifyToken, requireExpert, FormationController.createFormation);
 
 /**
+ * @route PUT /api/formations/:id
+ * @desc Mettre à jour une formation
+ * @access Private (Expert owner only)
+ */
+router.put('/:id', verifyToken, requireExpert, FormationController.updateFormation);
+
+/**
+ * @route DELETE /api/formations/:id
+ * @desc Supprimer une formation
+ * @access Private (Expert owner only)
+ */
+router.delete('/:id', verifyToken, requireExpert, FormationController.deleteFormation);
+
+/**
  * @route POST /api/formations/:id/enroll
  * @desc S'inscrire à une formation
  * @access Private
  */
 router.post('/:id/enroll', verifyToken, FormationController.enrollInFormation);
+
+/**
+ * @route POST /api/formations/:id/video/start
+ * @desc Démarrer la session vidéo de la formation (expert propriétaire uniquement)
+ * @access Private (Expert owner only)
+ */
+router.post('/:id/video/start', verifyToken, requireExpert, FormationController.startVideoSession);
+
+/**
+ * @route POST /api/formations/:id/video/stop
+ * @desc Terminer la session vidéo de la formation (expert propriétaire uniquement)
+ * @access Private (Expert owner only)
+ */
+router.post('/:id/video/stop', verifyToken, requireExpert, FormationController.stopVideoSession);
+
+/**
+ * @route GET /api/formations/:id/video/status
+ * @desc Obtenir le statut de la session vidéo
+ * @access Private
+ */
+router.get('/:id/video/status', verifyToken, FormationController.getVideoSessionStatus);
 
 module.exports = router;

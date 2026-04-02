@@ -74,117 +74,37 @@ function SignInContent() {
     window.location.href = `${backendUrl}/api/auth/${provider.toLowerCase()}`;
   };
 
-  const testAccounts = [
-    { email: 'sarah.martin@email.com', type: 'Expert - Psychologue' },
-    { email: 'user1@email.com', type: 'Utilisateur' },
-    { email: 'marc.dubois@email.com', type: 'Expert - Coach Business' }
-  ];
-
-  const fillTestAccount = (email: string) => {
-    setFormData(prev => ({
-      ...prev,
-      email: email,
-      password: 'password123'
-    }));
-  };
-
   return (
     <div className="pt-20 pb-12 px-4">
       <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Connexion</h1>
-            <p className="text-gray-600">Connectez-vous à votre compte DeepInfluence</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Connexion</h1>
+            <p className="text-gray-600 dark:text-gray-300">Connectez-vous à votre compte DeepInfluence</p>
           </div>
 
-          <div className="mb-6 p-4 bg-blue-50 rounded-xl">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">Comptes de test :</h3>
-            <div className="space-y-1">
-              {testAccounts.map((account, index) => (
-                <button
-                  key={index}
-                  onClick={() => fillTestAccount(account.email)}
-                  className="block w-full text-left text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                >
-                  {account.email} ({account.type})
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-blue-600 mt-1">Mot de passe : password123</p>
-          </div>
-          
           {/* Message de succès après inscription */}
           {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl">
               <div className="flex items-center">
                 <i className="ri-check-line text-green-500 mr-2"></i>
-                <p className="text-green-700 text-sm">{success}</p>
+                <p className="text-green-700 dark:text-green-300 text-sm">{success}</p>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl">
               <div className="flex items-center">
                 <i className="ri-error-warning-line text-red-500 mr-2"></i>
-                <p className="text-red-700 text-sm">{error}</p>
+                <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
               </div>
             </div>
           )}
 
-          <div className="space-y-3 mb-6">
-            <button
-              onClick={() => handleSocialLogin('Google')}
-              disabled={isLoading || !!socialLoading}
-              className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-xl py-3 px-4 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-            >
-              {socialLoading === 'Google' ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                  <span>Connexion...</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <i className="ri-google-fill text-red-500"></i>
-                  </div>
-                  Continuer avec Google
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => handleSocialLogin('Facebook')}
-              disabled={isLoading || !!socialLoading}
-              className="w-full flex items-center justify-center gap-3 bg-blue-600 text-white rounded-xl py-3 px-4 hover:bg-blue-700 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
-            >
-              {socialLoading === 'Facebook' ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Connexion...</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <i className="ri-facebook-fill"></i>
-                  </div>
-                  Continuer avec Facebook
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">ou</span>
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Adresse e-mail
               </label>
               <input
@@ -194,13 +114,13 @@ function SignInContent() {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                 placeholder="votre@email.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Mot de passe
               </label>
               <div className="relative">
@@ -211,13 +131,13 @@ function SignInContent() {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 >
                   <div className="w-5 h-5 flex items-center justify-center">
                     <i className={`ri-eye-${showPassword ? 'off-' : ''}line`}></i>
@@ -233,9 +153,9 @@ function SignInContent() {
                   name="rememberMe"
                   checked={formData.rememberMe}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                  className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
                 />
-                <span className="ml-2 text-sm text-gray-700">Se souvenir de moi</span>
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-200">Se souvenir de moi</span>
               </label>
               <Link
                 href="/forgot-password"
@@ -262,7 +182,7 @@ function SignInContent() {
           </form>
 
           <div className="mt-8 text-center">
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               Vous n'avez pas de compte ?{' '}
               <Link
                 href="/signup"
@@ -283,7 +203,7 @@ function SignInContent() {
 export default function SignInPage() {
     return (
         <Suspense fallback={<div>Chargement...</div>}>
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-900">
                 <AppHeader />
                 <SignInContent />
                 <Footer />

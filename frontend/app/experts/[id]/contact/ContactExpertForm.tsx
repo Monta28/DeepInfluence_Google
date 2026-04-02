@@ -117,7 +117,7 @@ export default function ContactExpertForm({ expertId }: { expertId: string }) {
     return (
       <div className="text-center py-16">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-gray-600">Chargement des informations de l'expert...</p>
+        <p className="mt-4 text-gray-600 dark:text-gray-300">Chargement des informations de l'expert...</p>
       </div>
     );
   }
@@ -125,11 +125,11 @@ export default function ContactExpertForm({ expertId }: { expertId: string }) {
   if (error && !expert) {
     return (
       <div className="text-center py-16">
-        <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="w-24 h-24 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
           <i className="ri-error-warning-line text-red-600 text-3xl"></i>
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">Erreur</h3>
-        <p className="text-gray-600 mb-6 max-w-md mx-auto">{error}</p>
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Erreur</h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">{error}</p>
         <Link
           href="/experts"
           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
@@ -146,8 +146,8 @@ export default function ContactExpertForm({ expertId }: { expertId: string }) {
   }
 
   return (
-    <div>
-      <AppHeader /> 
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      <AppHeader />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="mb-8">
@@ -209,29 +209,29 @@ export default function ContactExpertForm({ expertId }: { expertId: string }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                       onClick={() => setMessageType('text')}
-                      className={`p-4 rounded-xl border-2 transition-all ${messageType === 'text' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                      className={`p-4 rounded-xl border-2 transition-all ${messageType === 'text' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}`}
                   >
                       <div className="flex items-center space-x-3">
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${messageType === 'text' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${messageType === 'text' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
                               <i className="ri-message-line text-xl"></i>
                           </div>
                           <div className="text-left">
-                              <h3 className="font-semibold">Message texte</h3>
-                              <p className="text-sm text-gray-600">{expert.pricePerMessage} coins</p>
+                              <h3 className="font-semibold text-gray-900 dark:text-white">Message texte</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">{expert.pricePerMessage} coins</p>
                           </div>
                       </div>
                   </button>
                   <button
                       onClick={() => setMessageType('video')}
-                      className={`p-4 rounded-xl border-2 transition-all ${messageType === 'video' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}
+                      className={`p-4 rounded-xl border-2 transition-all ${messageType === 'video' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}`}
                   >
                       <div className="flex items-center space-x-3">
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${messageType === 'video' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${messageType === 'video' ? 'bg-purple-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
                               <i className="ri-video-line text-xl"></i>
                           </div>
                           <div className="text-left">
-                              <h3 className="font-semibold">Message vidéo</h3>
-                              <p className="text-sm text-gray-600">{expert.pricePerMessage * 2} coins</p>
+                              <h3 className="font-semibold text-gray-900 dark:text-white">Message vidéo</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">{expert.pricePerMessage * 2} coins</p>
                           </div>
                       </div>
                   </button>
@@ -239,25 +239,25 @@ export default function ContactExpertForm({ expertId }: { expertId: string }) {
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Votre message</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Votre message</label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder={`Décrivez votre question ou problématique pour ${expert.name}...`}
                 rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 mb-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center">
                     <i className="ri-coin-line text-white"></i>
                   </div>
                   <div>
-                    <h3 className="font-semibold">Coût du message</h3>
-                    <p className="text-sm text-gray-600">Vos coins: {user?.coins || 0} • Coût: {getCostText()}</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Coût du message</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Vos coins: {user?.coins || 0} • Coût: {getCostText()}</p>
                   </div>
                 </div>
                 {!hasEnoughCoins() && (
@@ -276,7 +276,7 @@ export default function ContactExpertForm({ expertId }: { expertId: string }) {
                 disabled={!message.trim() || !hasEnoughCoins() || submitting}
                 className={`flex-1 flex items-center justify-center space-x-3 py-4 px-6 rounded-xl font-semibold transition-all ${
                   !message.trim() || !hasEnoughCoins() || submitting
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                     : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
                 }`}
               >
@@ -295,7 +295,7 @@ export default function ContactExpertForm({ expertId }: { expertId: string }) {
 
               <Link
                 href={`/experts/${expert.id}/book`}
-                className="flex-1 flex items-center justify-center space-x-3 py-4 px-6 bg-white border-2 border-blue-600 text-blue-600 rounded-xl font-semibold hover:bg-blue-50"
+                className="flex-1 flex items-center justify-center space-x-3 py-4 px-6 bg-white dark:bg-gray-800 border-2 border-blue-600 text-blue-600 rounded-xl font-semibold hover:bg-blue-50 dark:hover:bg-gray-700"
               >
                 <i className="ri-calendar-line text-xl"></i>
                 <span>Réserver une consultation</span>

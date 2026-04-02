@@ -40,39 +40,39 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-900">
       <AppHeader />
-      
+
       <div className="pt-20 pb-12 px-4">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Contactez-nous</h1>
-            <p className="text-lg text-gray-600">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Contactez-nous</h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
               Une question ? Une suggestion ? Notre équipe est là pour vous aider.
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             {submitStatus === 'success' && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-center">
-                <i className="ri-checkbox-circle-line text-green-600 text-3xl mb-2"></i>
-                <p className="text-green-800 font-medium">Message envoyé avec succès !</p>
-                <p className="text-green-700 text-sm">Nous vous répondrons dans les plus brefs délais.</p>
+              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl text-center">
+                <i className="ri-checkbox-circle-line text-green-600 dark:text-green-400 text-3xl mb-2"></i>
+                <p className="text-green-800 dark:text-green-300 font-medium">Message envoyé avec succès !</p>
+                <p className="text-green-700 dark:text-green-400 text-sm">Nous vous répondrons dans les plus brefs délais.</p>
               </div>
             )}
 
             {submitStatus === 'error' && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-center">
-                    <i className="ri-error-warning-line text-red-600 text-3xl mb-2"></i>
-                    <p className="text-red-800 font-medium">Une erreur est survenue.</p>
-                    <p className="text-red-700 text-sm">Veuillez réessayer plus tard.</p>
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl text-center">
+                    <i className="ri-error-warning-line text-red-600 dark:text-red-400 text-3xl mb-2"></i>
+                    <p className="text-red-800 dark:text-red-300 font-medium">Une erreur est survenue.</p>
+                    <p className="text-red-700 dark:text-red-400 text-sm">Veuillez réessayer plus tard.</p>
                 </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Votre nom
                   </label>
                   <input
@@ -82,11 +82,11 @@ export default function ContactPage() {
                     value={formData.name}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Votre email
                   </label>
                   <input
@@ -96,13 +96,13 @@ export default function ContactPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Sujet
                 </label>
                 <input
@@ -112,12 +112,12 @@ export default function ContactPage() {
                   value={formData.subject}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
 
               <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Message
                 </label>
                 <textarea
@@ -127,7 +127,7 @@ export default function ContactPage() {
                   onChange={handleInputChange}
                   required
                   rows={5}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 resize-none bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
 

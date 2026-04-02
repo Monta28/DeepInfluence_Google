@@ -28,6 +28,15 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
   const [isBooking, setIsBooking] = useState(false);
   const [occupied, setOccupied] = useState<string[]>([]);
 
+  // Expert availability
+  const [availableDays, setAvailableDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([
+    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+    '17:00', '17:30', '18:00', '18:30'
+  ]);
+  const [vacationDays, setVacationDays] = useState<string[]>([]);
+
   useEffect(() => {
     if (!user) {
       router.push('/signin');
@@ -43,6 +52,19 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
       const response = await ApiService.getExpert(parseInt(expertId));
       if (response.success && response.data){
         setExpert(response.data);
+        // Load expert availability
+        const availabilityResponse = await ApiService.getExpertAvailability(parseInt(expertId));
+        if (availabilityResponse.success && availabilityResponse.data) {
+          if (availabilityResponse.data.availableDays && availabilityResponse.data.availableDays.length > 0) {
+            setAvailableDays(availabilityResponse.data.availableDays);
+          }
+          if (availabilityResponse.data.timeSlots && availabilityResponse.data.timeSlots.length > 0) {
+            setAvailableTimes(availabilityResponse.data.timeSlots);
+          }
+          if (availabilityResponse.data.vacationDays) {
+            setVacationDays(availabilityResponse.data.vacationDays);
+          }
+        }
       } else {
         setError('Expert non trouvé');
       }
@@ -52,12 +74,6 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
       setLoading(false);
     }
   };
-  
-  const availableTimes = [
-    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-    '17:00', '17:30', '18:00', '18:30'
-  ];
 
   // Date min = aujourd'hui (YYYY-MM-DD)
   const todayStr = useMemo(() => {
@@ -117,6 +133,23 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
 
   const isSlotOccupied = (time: string) => occupied.includes(time);
 
+  // Check if a date is on an available day
+  const isDayAvailable = (d: Date) => {
+    const dayOfWeek = d.getDay(); // 0=Sunday, 1=Monday, etc.
+    const dateStr = formatDate(d);
+    // Check if it's a vacation day
+    if (vacationDays.includes(dateStr)) {
+      return false;
+    }
+    return availableDays.includes(dayOfWeek);
+  };
+
+  // Check if a date is a vacation day
+  const isVacationDay = (d: Date) => {
+    const dateStr = formatDate(d);
+    return vacationDays.includes(dateStr);
+  };
+
   // Quand la date change, réinitialiser l'heure sélectionnée
   useEffect(() => {
     setSelectedTime('');
@@ -162,9 +195,9 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
     }
   };
   
-  if (loading) return <div>Chargement...</div>;
-  if (error) return <div>{error}</div>;
-  if (!expert) return <div>Expert non trouvé.</div>;
+  if (loading) return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 p-8">Chargement...</div>;
+  if (error) return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-red-600 dark:text-red-400 p-8">{error}</div>;
+  if (!expert) return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 p-8">Expert non trouvé.</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -174,7 +207,7 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
         <div className="mb-8">
           <Link 
             href={`/experts/${expertId}`} 
-            className="flex items-center text-blue-600 hover:text-blue-700 mb-4 cursor-pointer"
+            className="flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-4 cursor-pointer"
           >
             <i className="ri-arrow-left-line mr-2"></i>
             <span>Retour au profil</span>
@@ -234,28 +267,37 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
                         const dStr = formatDate(d);
                         const isCurrent = d.getMonth() === currentMonth.getMonth();
                         const isPast = dStr < todayStr;
+                        const isUnavailable = !isDayAvailable(d);
+                        const isDisabled = isPast || isUnavailable;
                         const isSelected = selectedDate === dStr;
                         const isToday = dStr === todayStr;
                         const base = 'text-sm rounded-lg py-2 text-center select-none';
                         const tone = !isCurrent ? 'text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-white';
-                        const state = isPast
+                        const state = isDisabled
                           ? 'bg-gray-100 dark:bg-gray-700/40 text-gray-400 cursor-not-allowed'
                           : isSelected
                             ? 'bg-blue-600 text-white shadow'
                             : 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
                         const ring = isToday && !isSelected ? 'ring-1 ring-blue-400' : '';
+                        const getTooltip = () => {
+                          if (isPast) return '';
+                          if (isVacationDay(d)) return 'Expert en congé ce jour';
+                          if (isUnavailable) return 'Expert non disponible ce jour';
+                          return '';
+                        };
                         return (
                           <div
                             key={dStr}
-                            onClick={() => { if (!isPast) setSelectedDate(dStr); }}
-                            className={`${base} ${tone} ${state} ${ring}`}
+                            onClick={() => { if (!isDisabled) setSelectedDate(dStr); }}
+                            className={`${base} ${tone} ${state} ${ring} ${isVacationDay(d) && !isPast ? 'bg-orange-100 dark:bg-orange-900/30' : ''}`}
+                            title={getTooltip()}
                           >
                             {d.getDate()}
                           </div>
                         );
                       })}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Vous ne pouvez choisir qu'une date à partir d'aujourd'hui.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Les jours grisés ne sont pas disponibles pour cet expert.</p>
                   </div>
                 </div>
 
@@ -272,9 +314,9 @@ export default function BookExpertForm({ expertId }: BookExpertFormProps) {
                         onClick={() => !(isSlotOccupied(time) || isSlotPastToday(time) || !selectedDate) && setSelectedTime(time)}
                         className={`p-2 text-sm rounded-lg border transition-colors whitespace-nowrap ${
                           isSlotOccupied(time)
-                            ? 'bg-red-100 text-red-700 border-red-300 cursor-not-allowed'
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700 cursor-not-allowed'
                             : isSlotPastToday(time) || !selectedDate
-                              ? 'bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed'
+                              ? 'bg-gray-100 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed'
                               : selectedTime === time
                                 ? 'bg-blue-600 text-white border-blue-600 cursor-pointer'
                                 : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:border-blue-500 cursor-pointer'

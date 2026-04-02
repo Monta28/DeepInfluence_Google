@@ -258,8 +258,7 @@ class FormationController {
         prerequisites = [],
         included = [],
         tools = [],
-        category,
-        videoConferenceLink // Lien vidéoconférence (accessible uniquement aux inscrits)
+        category
       } = req.body;
 
       // Helpers de normalisation
@@ -300,8 +299,20 @@ class FormationController {
         return ApiResponse.forbidden(res, 'Seuls les experts peuvent créer des formations');
       }
 
+      // Générer un identifiant unique pour la salle Jitsi de la formation
+      const generateRoomId = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let result = '';
+        for (let i = 0; i < 8; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+      };
+
       // Créer la formation
       const normalize = (s) => s ? s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() : s;
+      const roomId = generateRoomId();
+
       const created = await prisma.formation.create({
         data: {
           title,
@@ -327,7 +338,8 @@ class FormationController {
           included: JSON.stringify(toArray(included)),
           tools: JSON.stringify(toArray(tools)),
           category,
-          videoConferenceLink: videoConferenceLink ? videoConferenceLink.trim() : null
+          // Générer automatiquement le lien Jitsi uniquement pour les formations "En direct"
+          videoConferenceLink: type === 'live' ? `formation-${roomId}` : null
         },
         include: {
           expert: {
@@ -657,6 +669,459 @@ class FormationController {
     } catch (e) {
       console.error('Export all formations enrollments error:', e?.message || e);
       return ApiResponse.error(res, "Erreur export CSV");
+    }
+  }
+
+  /**
+   * Démarrer la session vidéo de la formation (expert propriétaire uniquement)
+   */
+  static async startVideoSession(req, res) {
+    try {
+      const formationId = parseInt(req.params.id);
+      if (!Number.isFinite(formationId)) return ApiResponse.badRequest(res, 'ID invalide');
+
+      // Vérifier que l'utilisateur est l'expert propriétaire
+      const expert = await prisma.expert.findUnique({ where: { userId: req.user.id } });
+      if (!expert) return ApiResponse.forbidden(res, "Accès refusé");
+
+      const formation = await prisma.formation.findUnique({
+        where: { id: formationId },
+        select: { id: true, instructorId: true, videoConferenceLink: true }
+      });
+
+      if (!formation) return ApiResponse.notFound(res, 'Formation non trouvée');
+      if (formation.instructorId !== expert.id) return ApiResponse.forbidden(res, "Vous n'êtes pas propriétaire de cette formation");
+      if (!formation.videoConferenceLink) return ApiResponse.badRequest(res, "Cette formation n'a pas de vidéoconférence configurée");
+
+      // Démarrer la session
+      await prisma.formation.update({
+        where: { id: formationId },
+        data: {
+          videoSessionStartedAt: new Date(),
+          videoSessionEndedAt: null // Reset end time
+        }
+      });
+
+      // Notifier les inscrits en temps réel via Socket.IO
+      try {
+        const io = req.app.get('io');
+        const onlineUsers = req.app.get('onlineUsers');
+        if (io) {
+          const enrollments = await prisma.userFormation.findMany({
+            where: { formationId },
+            select: { userId: true }
+          });
+          for (const e of enrollments) {
+            const sockId = onlineUsers?.get(e.userId);
+            if (sockId) {
+              io.to(sockId).emit('formationVideoStarted', { formationId });
+            }
+          }
+        }
+      } catch {}
+
+      return ApiResponse.success(res, { started: true }, 'Session vidéo démarrée');
+    } catch (error) {
+      console.error('Start video session error:', error);
+      return ApiResponse.error(res, 'Erreur lors du démarrage de la session vidéo');
+    }
+  }
+
+  /**
+   * Terminer la session vidéo de la formation (expert propriétaire uniquement)
+   */
+  static async stopVideoSession(req, res) {
+    try {
+      const formationId = parseInt(req.params.id);
+      if (!Number.isFinite(formationId)) return ApiResponse.badRequest(res, 'ID invalide');
+
+      // Vérifier que l'utilisateur est l'expert propriétaire
+      const expert = await prisma.expert.findUnique({ where: { userId: req.user.id } });
+      if (!expert) return ApiResponse.forbidden(res, "Accès refusé");
+
+      const formation = await prisma.formation.findUnique({
+        where: { id: formationId },
+        select: { id: true, instructorId: true }
+      });
+
+      if (!formation) return ApiResponse.notFound(res, 'Formation non trouvée');
+      if (formation.instructorId !== expert.id) return ApiResponse.forbidden(res, "Vous n'êtes pas propriétaire de cette formation");
+
+      // Terminer la session
+      await prisma.formation.update({
+        where: { id: formationId },
+        data: {
+          videoSessionEndedAt: new Date()
+        }
+      });
+
+      // Notifier les inscrits en temps réel via Socket.IO pour qu'ils quittent
+      try {
+        const io = req.app.get('io');
+        const onlineUsers = req.app.get('onlineUsers');
+        if (io) {
+          const enrollments = await prisma.userFormation.findMany({
+            where: { formationId },
+            select: { userId: true }
+          });
+          for (const e of enrollments) {
+            const sockId = onlineUsers?.get(e.userId);
+            if (sockId) {
+              io.to(sockId).emit('formationVideoEnded', { formationId });
+            }
+          }
+        }
+      } catch {}
+
+      return ApiResponse.success(res, { stopped: true }, 'Session vidéo terminée');
+    } catch (error) {
+      console.error('Stop video session error:', error);
+      return ApiResponse.error(res, 'Erreur lors de l\'arrêt de la session vidéo');
+    }
+  }
+
+  /**
+   * Obtenir le statut de la session vidéo (pour savoir si les clients peuvent rejoindre)
+   */
+  static async getVideoSessionStatus(req, res) {
+    try {
+      const formationId = parseInt(req.params.id);
+      if (!Number.isFinite(formationId)) return ApiResponse.badRequest(res, 'ID invalide');
+
+      const formation = await prisma.formation.findUnique({
+        where: { id: formationId },
+        select: {
+          id: true,
+          instructorId: true,
+          nextSession: true,
+          videoSessionStartedAt: true,
+          videoSessionEndedAt: true,
+          videoConferenceLink: true,
+          expert: {
+            select: {
+              user: { select: { id: true } }
+            }
+          }
+        }
+      });
+
+      if (!formation) return ApiResponse.notFound(res, 'Formation non trouvée');
+
+      // Vérifier si l'utilisateur est le propriétaire
+      const isOwner = req.user && formation.expert?.user?.id === req.user.id;
+
+      // La session est active si elle a été démarrée et non terminée
+      const isSessionActive = formation.videoSessionStartedAt && !formation.videoSessionEndedAt;
+
+      // Vérifier si on est dans les 5 minutes avant la date prévue
+      let isWithin5MinutesOfSchedule = false;
+      if (formation.nextSession) {
+        try {
+          const nextSessionDate = new Date(formation.nextSession);
+          const now = new Date();
+          const diffMs = nextSessionDate.getTime() - now.getTime();
+          const fiveMinutesMs = 5 * 60 * 1000;
+          // Dans les 5 minutes avant OU après la date prévue (pour permettre un délai raisonnable)
+          isWithin5MinutesOfSchedule = diffMs <= fiveMinutesMs && diffMs >= -30 * 60 * 1000; // jusqu'à 30min après
+        } catch {}
+      }
+
+      // Les clients peuvent rejoindre si:
+      // 1. La session est active (expert a cliqué "Lancer")
+      // 2. OU on est dans les 5 minutes avant/après la date prévue
+      const canJoin = isOwner || isSessionActive || isWithin5MinutesOfSchedule;
+
+      return ApiResponse.success(res, {
+        isSessionActive,
+        isWithin5MinutesOfSchedule,
+        canJoin,
+        isOwner,
+        videoSessionStartedAt: formation.videoSessionStartedAt,
+        videoSessionEndedAt: formation.videoSessionEndedAt,
+        nextSession: formation.nextSession,
+        hasVideoConferenceLink: !!formation.videoConferenceLink
+      });
+    } catch (error) {
+      console.error('Get video session status error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la récupération du statut de la session');
+    }
+  }
+
+  /**
+   * Mettre à jour une formation existante
+   */
+  static async updateFormation(req, res) {
+    try {
+      const formationId = parseInt(req.params.id);
+      if (!Number.isFinite(formationId)) {
+        return ApiResponse.badRequest(res, 'ID invalide');
+      }
+
+      // Vérifier que la formation existe
+      const formation = await prisma.formation.findUnique({
+        where: { id: formationId }
+      });
+
+      if (!formation) {
+        return ApiResponse.notFound(res, 'Formation non trouvée');
+      }
+
+      // Vérifier que l'expert est le propriétaire
+      if (formation.instructorId !== req.expert.id) {
+        return ApiResponse.forbidden(res, "Vous n'êtes pas propriétaire de cette formation");
+      }
+
+      // Helpers
+      const toArray = (val) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string') {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed;
+          } catch {}
+          return val.split(',').map((s) => s.trim()).filter(Boolean);
+        }
+        return [];
+      };
+
+      const normalize = (s) => s ? s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() : s;
+
+      // Champs acceptés depuis le body
+      const {
+        title,
+        duration,
+        level,
+        price,
+        type,
+        maxPlaces,
+        location,
+        image,
+        tags,
+        nextSession,
+        description,
+        schedule,
+        modules,
+        objectives,
+        prerequisites,
+        included,
+        tools,
+        category,
+        // Phase 3 fields
+        subtitle,
+        shortDescription,
+        learningObjectives,
+        targetAudience,
+        subcategory,
+        language,
+        totalHours,
+        totalMinutes,
+        totalWeeks,
+        totalModules,
+        frequency,
+        startDate,
+        endDate,
+        promoCode,
+        promoDiscount,
+        promoMaxUses,
+        maxEnrolled,
+        structuredModules
+      } = req.body;
+
+      // Construire l'objet de mise à jour (uniquement les champs fournis)
+      const data = {};
+
+      // Champs texte simples
+      if (title !== undefined) {
+        data.title = title;
+        data.titleNormalized = normalize(title);
+      }
+      if (duration !== undefined) data.duration = duration;
+      if (level !== undefined) data.level = level;
+      if (type !== undefined) data.type = type;
+      if (location !== undefined) data.location = location;
+      if (image !== undefined) data.image = image;
+      if (nextSession !== undefined) data.nextSession = nextSession;
+      if (schedule !== undefined) data.schedule = schedule;
+      if (category !== undefined) data.category = category;
+
+      if (description !== undefined) {
+        data.description = description;
+        data.descriptionNormalized = normalize(description);
+      }
+
+      // Champs numériques
+      if (price !== undefined) {
+        const parsedPrice = Number.parseInt(String(price), 10);
+        if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+          return ApiResponse.badRequest(res, 'Le champ price doit être un entier positif');
+        }
+        data.price = parsedPrice;
+      }
+      if (maxPlaces !== undefined) {
+        const parsedMaxPlaces = Number.parseInt(String(maxPlaces), 10);
+        if (!Number.isFinite(parsedMaxPlaces) || parsedMaxPlaces <= 0) {
+          return ApiResponse.badRequest(res, 'Le champ maxPlaces doit être un entier strictement positif');
+        }
+        data.maxPlaces = parsedMaxPlaces;
+      }
+
+      // Champs JSON array
+      const jsonArrayFields = { tags, modules, objectives, prerequisites, included, tools, learningObjectives, structuredModules };
+      for (const [key, val] of Object.entries(jsonArrayFields)) {
+        if (val !== undefined) {
+          data[key] = Array.isArray(val) ? JSON.stringify(val) : (typeof val === 'string' ? val : JSON.stringify(toArray(val)));
+        }
+      }
+
+      // Phase 3 - Champs texte simples
+      if (subtitle !== undefined) data.subtitle = subtitle;
+      if (shortDescription !== undefined) data.shortDescription = shortDescription;
+      if (targetAudience !== undefined) data.targetAudience = targetAudience;
+      if (subcategory !== undefined) data.subcategory = subcategory;
+      if (language !== undefined) data.language = language;
+      if (frequency !== undefined) data.frequency = frequency;
+      if (promoCode !== undefined) data.promoCode = promoCode;
+
+      // Phase 3 - Champs numériques
+      if (totalHours !== undefined) data.totalHours = totalHours !== null ? parseInt(String(totalHours), 10) : null;
+      if (totalMinutes !== undefined) data.totalMinutes = totalMinutes !== null ? parseInt(String(totalMinutes), 10) : null;
+      if (totalWeeks !== undefined) data.totalWeeks = totalWeeks !== null ? parseInt(String(totalWeeks), 10) : null;
+      if (totalModules !== undefined) data.totalModules = totalModules !== null ? parseInt(String(totalModules), 10) : null;
+      if (promoDiscount !== undefined) data.promoDiscount = promoDiscount !== null ? parseInt(String(promoDiscount), 10) : null;
+      if (promoMaxUses !== undefined) data.promoMaxUses = promoMaxUses !== null ? parseInt(String(promoMaxUses), 10) : null;
+      if (maxEnrolled !== undefined) data.maxEnrolled = maxEnrolled !== null ? parseInt(String(maxEnrolled), 10) : null;
+
+      // Phase 3 - Champs date
+      if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null;
+      if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null;
+
+      // Si le type passe en "live" et qu'il n'y a pas encore de lien Jitsi, en générer un
+      if (data.type === 'live' && !formation.videoConferenceLink) {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let roomId = '';
+        for (let i = 0; i < 8; i++) {
+          roomId += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        data.videoConferenceLink = `formation-${roomId}`;
+      }
+
+      const updated = await prisma.formation.update({
+        where: { id: formationId },
+        data,
+        include: {
+          expert: {
+            select: {
+              id: true,
+              name: true,
+              verified: true,
+              user: { select: { avatar: true } }
+            }
+          }
+        }
+      });
+
+      // Normaliser la réponse
+      const safeParse = (str, fallback) => {
+        try { if (str == null || str === '') return fallback; return JSON.parse(str); } catch { return fallback; }
+      };
+
+      const responseFormation = {
+        ...updated,
+        tags: safeParse(updated.tags, []),
+        modules: safeParse(updated.modules, []),
+        objectives: safeParse(updated.objectives, []),
+        prerequisites: safeParse(updated.prerequisites, []),
+        included: safeParse(updated.included, []),
+        tools: safeParse(updated.tools, []),
+        learningObjectives: safeParse(updated.learningObjectives, []),
+        structuredModules: safeParse(updated.structuredModules, []),
+        expert: updated.expert
+          ? {
+              id: updated.expert.id,
+              name: updated.expert.name,
+              verified: updated.expert.verified,
+              image: updated.expert.user?.avatar,
+            }
+          : null,
+      };
+
+      return ApiResponse.success(res, responseFormation, 'Formation mise à jour avec succès');
+
+    } catch (error) {
+      console.error('Update formation error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la mise à jour de la formation');
+    }
+  }
+
+  /**
+   * Supprimer une formation
+   */
+  static async deleteFormation(req, res) {
+    try {
+      const formationId = parseInt(req.params.id);
+      if (!Number.isFinite(formationId)) {
+        return ApiResponse.badRequest(res, 'ID invalide');
+      }
+
+      // Vérifier que la formation existe
+      const formation = await prisma.formation.findUnique({
+        where: { id: formationId },
+        include: {
+          enrollments: { select: { id: true, userId: true } }
+        }
+      });
+
+      if (!formation) {
+        return ApiResponse.notFound(res, 'Formation non trouvée');
+      }
+
+      // Vérifier que l'expert est le propriétaire
+      if (formation.instructorId !== req.expert.id) {
+        return ApiResponse.forbidden(res, "Vous n'êtes pas propriétaire de cette formation");
+      }
+
+      // Avertissement si des inscriptions actives existent
+      const activeEnrollments = formation.enrollments.length;
+
+      await prisma.$transaction(async (tx) => {
+        // Dissocier les rendez-vous liés (formationId est nullable, pas de cascade)
+        await tx.appointment.updateMany({
+          where: { formationId },
+          data: { formationId: null }
+        });
+
+        // Supprimer les inscriptions (UserFormation) -- cascade existe mais on le fait explicitement par sécurité
+        await tx.userFormation.deleteMany({
+          where: { formationId }
+        });
+
+        // Supprimer les avis liés
+        await tx.review.deleteMany({
+          where: { formationId }
+        });
+
+        // Supprimer les favoris liés
+        await tx.favoriteFormation.deleteMany({
+          where: { formationId }
+        });
+
+        // Supprimer la formation
+        await tx.formation.delete({
+          where: { id: formationId }
+        });
+      });
+
+      return ApiResponse.success(res, {
+        deletedId: formationId,
+        enrollmentsRemoved: activeEnrollments
+      }, activeEnrollments > 0
+        ? `Formation supprimée avec succès (${activeEnrollments} inscription(s) retirée(s))`
+        : 'Formation supprimée avec succès'
+      );
+
+    } catch (error) {
+      console.error('Delete formation error:', error);
+      return ApiResponse.error(res, 'Erreur lors de la suppression de la formation');
     }
   }
 
