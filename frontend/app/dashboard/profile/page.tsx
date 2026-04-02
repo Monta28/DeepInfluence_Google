@@ -174,9 +174,10 @@ export default function ProfilePage() {
                     setAvailableDays(response.data.availableDays);
                 }
                 // Load per-day slots if available
-                if (response.data.daySlots && typeof response.data.daySlots === 'object') {
+                const availData = response.data as any;
+                if (availData.daySlots && typeof availData.daySlots === 'object') {
                     const parsed: Record<number, TimeSlot[]> = {};
-                    for (const [key, val] of Object.entries(response.data.daySlots)) {
+                    for (const [key, val] of Object.entries(availData.daySlots)) {
                         parsed[Number(key)] = val as TimeSlot[];
                     }
                     setDaySlots(parsed);
