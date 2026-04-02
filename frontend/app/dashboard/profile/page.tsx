@@ -403,7 +403,7 @@ export default function ProfilePage() {
                 }
             }
 
-            const response = await ApiService.updateMyAvailability({
+            const response = await (ApiService as any).updateMyAvailability({
                 availableDays,
                 availableTimeSlots: allSlots,
                 daySlots,
