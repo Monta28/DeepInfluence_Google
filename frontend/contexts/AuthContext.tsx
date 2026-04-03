@@ -20,6 +20,7 @@ interface AuthContextType {
     email: string;
     password: string;
     userType?: string;
+    referralCode?: string;
   }) => Promise<void>;
   logout: () => void;
   updateUser: (newUserData: Partial<UserWithProfileStatus>) => void; // Modifié pour être synchrone  
