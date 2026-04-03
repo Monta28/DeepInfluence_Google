@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import AppHeader from '@/components/AppHeader';
 import Link from 'next/link';
 import ApiService from '@/services/api';
@@ -14,6 +14,7 @@ interface VideoPlayerProps {
 }
 
 export default function VideoPlayer({ videoId }: VideoPlayerProps) {
+  const videoRef = React.useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -269,7 +270,12 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
   };
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const el = videoRef.current;
+    if (el) {
+      if (el.paused) { el.play(); } else { el.pause(); }
+    } else {
+      setIsPlaying(!isPlaying);
+    }
   };
 
   const handleSeek = (e: any) => {
@@ -277,15 +283,21 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
     const clickX = e.clientX - rect.left;
     const newTime = (clickX / rect.width) * duration;
     setCurrentTime(newTime);
+    if (videoRef.current) videoRef.current.currentTime = newTime;
   };
 
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
     setShowSpeedMenu(false);
+    if (videoRef.current) videoRef.current.playbackRate = speed;
   };
 
   const handleToggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    const container = videoRef.current?.parentElement;
+    if (container) {
+      if (!document.fullscreenElement) { container.requestFullscreen?.(); setIsFullscreen(true); }
+      else { document.exitFullscreen?.(); setIsFullscreen(false); }
+    }
   };
 
   const handleToggleFavorite = async () => {
@@ -444,6 +456,20 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
     }
   }
 
+  // Build full video URL
+  const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, '') || '';
+  const fullVideoUrl = video?.videoUrl
+    ? (video.videoUrl.startsWith('http') ? video.videoUrl : `${backendBase}${video.videoUrl}`)
+    : '';
+
+  // Sync video element with state
+  const handlePlayPauseReal = useCallback(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.paused) { el.play(); setIsPlaying(true); }
+    else { el.pause(); setIsPlaying(false); }
+  }, []);
+
   // Safe fallbacks for optional fields from API
   const transcript = Array.isArray((video as any)?.transcript) ? (video as any).transcript : [];
   const expertName = (video as any)?.expert || (video as any)?.expertRel?.name || 'Expert';
@@ -468,18 +494,37 @@ export default function VideoPlayer({ videoId }: VideoPlayerProps) {
                 onMouseMove={() => setShowControls(true)}
                 onMouseLeave={() => isPlaying && setShowControls(false)}
               >
-                {/* Thumbnail de la vidéo */}
-                <img src={thumb} alt={video.title} className="w-full h-full object-cover" />
-                
-                {/* Overlay de lecture */}
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                  <button
-                    onClick={handlePlayPause}
-                    className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors"
-                  >
-                    <i className={`${isPlaying ? 'ri-pause-fill' : 'ri-play-fill'} text-3xl text-gray-900`}></i>
-                  </button>
-                </div>
+                {/* Lecteur vidéo réel */}
+                {fullVideoUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={fullVideoUrl}
+                    poster={thumb}
+                    className="w-full h-full object-contain bg-black"
+                    playsInline
+                    onTimeUpdate={(e) => setCurrentTime((e.target as HTMLVideoElement).currentTime)}
+                    onLoadedMetadata={(e) => setDuration((e.target as HTMLVideoElement).duration)}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => setIsPlaying(false)}
+                    onVolumeChange={(e) => setVolume((e.target as HTMLVideoElement).volume)}
+                    onClick={handlePlayPauseReal}
+                  />
+                ) : (
+                  <img src={thumb} alt={video.title} className="w-full h-full object-cover" />
+                )}
+
+                {/* Overlay de lecture (visible quand pas en lecture ou pas de vidéo) */}
+                {!isPlaying && (
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <button
+                      onClick={handlePlayPauseReal}
+                      className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+                    >
+                      <i className="ri-play-fill text-3xl text-gray-900"></i>
+                    </button>
+                  </div>
+                )}
 
                 {/* Contrôles vidéo */}
                 <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
