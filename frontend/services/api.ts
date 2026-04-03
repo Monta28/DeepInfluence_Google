@@ -664,6 +664,23 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  static async updateVideo(id: number, data: any) {
+    const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  static async deleteVideo(id: number) {
+    const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
   static async likeVideo(id: number) {
     const response = await fetch(`${API_BASE_URL}/videos/${id}/like`, {
       method: 'POST',
