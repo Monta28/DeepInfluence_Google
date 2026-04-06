@@ -260,6 +260,17 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
                     {lang}
                   </span>
                 ))}
+                {expert.linkedinUrl && (
+                  <a
+                    href={expert.linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 bg-white/20 text-white px-3 py-1 rounded-full text-sm hover:bg-white/30 transition-colors"
+                  >
+                    <i className="ri-linkedin-fill"></i>
+                    LinkedIn
+                  </a>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -441,13 +452,13 @@ function ExpertProfileContent({ expertId }: { expertId: string }) {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Calendrier de réservation</h3>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">Le système de réservation sera bientôt disponible.</p>
-                <button
-                  onClick={handleBooking}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                <Link
+                  href={user ? `/experts/${expertId}/book` : '/signin'}
+                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                 >
-  const socket = useSocket();
+                  <i className="ri-calendar-line mr-2"></i>
                   Demander une consultation
-                </button>
+                </Link>
               </div>
             </div>
           </div>

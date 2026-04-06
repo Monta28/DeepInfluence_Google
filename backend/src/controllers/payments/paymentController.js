@@ -7,6 +7,76 @@ const crypto = require('crypto');
  */
 class PaymentController {
   /**
+   * Credit referral commission to the referrer if the paying user was referred
+   * and the referral is still active (within 6 months).
+   * @param {number} userId - The user who made the purchase
+   * @param {number} amountCoins - The coin amount of the transaction (used to compute commission)
+   * @param {string} description - Description for the commission transaction
+   * @param {object} tx - Prisma transaction client (optional, uses prisma if not provided)
+   */
+  static async _creditReferralCommission(userId, amountCoins, description, tx) {
+    const db = tx || prisma;
+    try {
+      if (!amountCoins || amountCoins <= 0) return;
+
+      // Check if this user was referred
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { referredBy: true, referredAt: true, userType: true }
+      });
+
+      if (!user?.referredBy) return;
+
+      // Find the active referral record
+      const now = new Date();
+      const referral = await db.referral.findFirst({
+        where: {
+          referredUserId: userId,
+          isActive: true,
+          expiresAt: { gt: now }
+        }
+      });
+
+      if (!referral) return;
+
+      // Calculate commission: 5% for user referrals, 2.5% for expert referrals
+      const commissionRate = parseFloat(referral.commissionRate) / 100;
+      const commissionCoins = Math.floor(amountCoins * commissionRate);
+
+      if (commissionCoins <= 0) return;
+
+      // Credit the referrer
+      await db.user.update({
+        where: { id: referral.referrerId },
+        data: { coins: { increment: commissionCoins } }
+      });
+
+      // Record the commission transaction
+      await db.transaction.create({
+        data: {
+          userId: referral.referrerId,
+          type: 'referral_commission',
+          amount: 0,
+          coins: commissionCoins,
+          description: `Commission parrainage (${referral.commissionRate}%): ${description}`,
+          relatedId: referral.id
+        }
+      });
+
+      // Update total earnings on the referral record
+      await db.referral.update({
+        where: { id: referral.id },
+        data: {
+          totalEarnings: { increment: commissionCoins }
+        }
+      });
+    } catch (error) {
+      // Do not let commission errors break the main payment flow
+      console.error('Referral commission error (non-blocking):', error);
+    }
+  }
+
+  /**
    * PHASE 2 - Acheter un pack de coins via Flouci
    * @route POST /api/payments/buy-coins
    * @access Private
@@ -363,6 +433,12 @@ class PaymentController {
                   relatedId: payment.id
                 }
               });
+
+              // Credit referral commission if applicable (based on TND amount converted to coins equivalent)
+              const coinEquivalent = Math.round(payment.amountTND / 0.05); // 1 coin = 0.05 TND
+              await PaymentController._creditReferralCommission(
+                userId, coinEquivalent, `Achat cours: ${meta.courseTitle}`, tx
+              );
             });
 
             // Notification temps réel
@@ -431,6 +507,12 @@ class PaymentController {
                   relatedId: payment.id
                 }
               });
+
+              // Credit referral commission if applicable
+              const coinEquivalent = meta.coinPrice || Math.round((payment.amountTND || 0) / 0.05);
+              await PaymentController._creditReferralCommission(
+                userId, coinEquivalent, `Achat vidéo: ${meta.videoTitle}`, tx
+              );
             });
 
             try {
@@ -473,6 +555,11 @@ class PaymentController {
                   relatedId: payment.id
                 }
               });
+
+              // Credit referral commission if applicable
+              await PaymentController._creditReferralCommission(
+                userId, payment.coins, `Achat de ${payment.coins} coins`, tx
+              );
             });
 
             // Notification temps réel
@@ -597,6 +684,12 @@ class PaymentController {
                 relatedId: payment.id
               }
             });
+
+            // Credit referral commission if applicable
+            const coinEquivalent = Math.round((payment.amountTND || 0) / 0.05);
+            await PaymentController._creditReferralCommission(
+              payment.userId, coinEquivalent, `Achat cours: ${meta.courseTitle}`, tx
+            );
           });
 
           try {
@@ -636,6 +729,12 @@ class PaymentController {
                 relatedId: payment.id
               }
             });
+
+            // Credit referral commission if applicable
+            const coinEquivalent = meta.coinPrice || Math.round((payment.amountTND || 0) / 0.05);
+            await PaymentController._creditReferralCommission(
+              payment.userId, coinEquivalent, `Achat vidéo: ${meta.videoTitle}`, tx
+            );
           });
 
           try {
@@ -671,6 +770,11 @@ class PaymentController {
                 relatedId: payment.id
               }
             });
+
+            // Credit referral commission if applicable
+            await PaymentController._creditReferralCommission(
+              payment.userId, payment.coins, `Achat de ${payment.coins} coins`, tx
+            );
           });
 
           try {

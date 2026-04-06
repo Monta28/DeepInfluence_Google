@@ -44,23 +44,56 @@ class ReferralController {
 
   /**
    * Récupérer les statistiques de parrainage de l'utilisateur connecté
+   * Retourne des stats détaillées : totaux par type, earnings par type, transactions récentes
    */
   static async getReferralStats(req, res) {
     try {
+      const now = new Date();
+
       const referrals = await prisma.referral.findMany({
-        where: { referrerId: req.user.id }
+        where: { referrerId: req.user.id },
+        include: {
+          referredUser: {
+            select: { id: true, firstName: true, lastName: true, userType: true }
+          }
+        }
       });
 
-      const totalReferrals = referrals.length;
-      const activeReferrals = referrals.filter(r => r.isActive).length;
-      const totalEarnings = referrals.reduce(
+      // Totaux par type
+      const userReferrals = referrals.filter(r => r.type === 'user');
+      const expertReferrals = referrals.filter(r => r.type === 'expert');
+
+      // Parrainages actifs (expiresAt dans le futur)
+      const activeReferrals = referrals.filter(r => r.isActive && new Date(r.expiresAt) > now).length;
+
+      // Gains ventilés par type
+      const userEarnings = userReferrals.reduce(
         (sum, r) => sum + parseFloat(r.totalEarnings || 0), 0
       );
+      const expertEarnings = expertReferrals.reduce(
+        (sum, r) => sum + parseFloat(r.totalEarnings || 0), 0
+      );
+      const totalEarnings = userEarnings + expertEarnings;
+
+      // Transactions récentes ayant généré des commissions de parrainage
+      const recentCommissions = await prisma.transaction.findMany({
+        where: {
+          userId: req.user.id,
+          type: 'referral_commission'
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      });
 
       return ApiResponse.success(res, {
-        totalReferrals,
+        totalReferrals: referrals.length,
+        userReferrals: userReferrals.length,
+        expertReferrals: expertReferrals.length,
         activeReferrals,
-        totalEarnings
+        totalEarnings,
+        userEarnings,
+        expertEarnings,
+        recentCommissions
       });
     } catch (error) {
       console.error('Get referral stats error:', error);

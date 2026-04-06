@@ -85,12 +85,20 @@ export default function ExpertsPage() {
 
   const categories = [
     { id: 'all', name: 'Toutes', icon: 'ri-apps-line' },
-    { id: 'business', name: 'Business', icon: 'ri-briefcase-line' },
-    { id: 'marketing', name: 'Marketing', icon: 'ri-megaphone-line' },
-    { id: 'tech', name: 'Technologie', icon: 'ri-computer-line' },
-    { id: 'wellness', name: 'Bien-être', icon: 'ri-heart-line' },
-    { id: 'finance', name: 'Finance', icon: 'ri-money-dollar-circle-line' },
-    { id: 'developpement', name: 'Développement personnel', icon: 'ri-user-star-line' },
+    { id: 'Business', name: 'Business', icon: 'ri-briefcase-line' },
+    { id: 'Marketing', name: 'Marketing', icon: 'ri-megaphone-line' },
+    { id: 'Technologie', name: 'Technologie', icon: 'ri-computer-line' },
+    { id: 'Bien-être', name: 'Bien-être', icon: 'ri-heart-line' },
+    { id: 'Finance', name: 'Finance', icon: 'ri-money-dollar-circle-line' },
+    { id: 'Développement personnel', name: 'Développement personnel', icon: 'ri-user-star-line' },
+    { id: 'Coaching', name: 'Coaching', icon: 'ri-team-line' },
+    { id: 'Santé', name: 'Santé', icon: 'ri-heart-pulse-line' },
+    { id: 'Juridique', name: 'Juridique', icon: 'ri-scales-line' },
+    { id: 'Immobilier', name: 'Immobilier', icon: 'ri-building-line' },
+    { id: 'E-commerce', name: 'E-commerce', icon: 'ri-shopping-cart-line' },
+    { id: 'Crypto', name: 'Crypto', icon: 'ri-bit-coin-line' },
+    { id: 'Design graphique', name: 'Design graphique', icon: 'ri-palette-line' },
+    { id: 'Éducation', name: 'Éducation', icon: 'ri-graduation-cap-line' },
   ];
 
   return (

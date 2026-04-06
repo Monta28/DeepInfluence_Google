@@ -11,10 +11,17 @@
 @layer base {
   .dark {
     --tw-bg-opacity: 1;
+    color-scheme: dark;
   }
   .dark body {
-    background-color: rgb(17 24 39 / var(--tw-bg-opacity)); /* gray-900 */
+    background-color: #0a0a0f;
   }
+}
+
+@layer utilities {
+  .dark .dark\:bg-gray-900 { background-color: #0d0d14 !important; }
+  .dark .dark\:bg-gray-800 { background-color: #131320 !important; }
+  .dark .dark\:bg-gray-700 { background-color: #1a1a2e !important; }
 }
 
 /* Fix notification dropdown on mobile */

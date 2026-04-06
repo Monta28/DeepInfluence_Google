@@ -174,10 +174,6 @@ export default function Dashboard() {
                       <i className="ri-movie-2-line text-pink-600 dark:text-pink-400 text-2xl mb-2"></i>
                       <span className="text-sm font-medium text-pink-900 dark:text-pink-100 text-center">Mes Reels</span>
                     </Link>
-                    <Link href="/dashboard/availability" className="flex flex-col items-center p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-colors">
-                      <i className="ri-calendar-check-line text-teal-600 dark:text-teal-400 text-2xl mb-2"></i>
-                      <span className="text-sm font-medium text-teal-900 dark:text-teal-100 text-center">Disponibilités</span>
-                    </Link>
                   </>
                 ) : (
                   <Link href="/signup?type=expert" className="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 rounded-lg hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900/50 dark:hover:to-indigo-900/50 transition-colors border-2 border-dashed border-purple-300 dark:border-purple-600">

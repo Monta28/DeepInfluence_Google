@@ -478,36 +478,66 @@ export default function CoinsPage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-start space-x-2 text-gray-700 dark:text-gray-300">
                         <i className="ri-user-line text-purple-500 mt-0.5"></i>
-                        <span>5% pour chaque achat de vos filleuls utilisateurs</span>
+                        <span>5% pour chaque achat de vos filleuls utilisateurs pendant 6 mois</span>
                       </div>
                       <div className="flex items-start space-x-2 text-gray-700 dark:text-gray-300">
                         <i className="ri-vip-crown-line text-green-500 mt-0.5"></i>
-                        <span>2.5% pour les transactions de vos filleuls experts</span>
-                      </div>
-                      <div className="flex items-start space-x-2 text-gray-700 dark:text-gray-300">
-                        <i className="ri-time-line text-orange-500 mt-0.5"></i>
-                        <span>Valable pendant 6 mois</span>
+                        <span>2,5% sur les transactions des experts pendant 6 mois</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Referral code display */}
+                  {/* Two types of referral codes */}
                   {referralCode && (
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-4 text-white">
-                      <p className="text-sm text-blue-100 mb-2">Votre code de parrainage</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold tracking-wider">{referralCode}</span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(referralCode);
-                          }}
-                          className="bg-white/20 hover:bg-white/30 transition-colors rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-1"
-                        >
-                          <i className="ri-file-copy-line"></i>
-                          Copier
-                        </button>
+                    <>
+                      {/* Code utilisateur (no expiry) */}
+                      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-4 text-white">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <i className="ri-user-line text-lg"></i>
+                          <p className="text-sm font-semibold">Code pour utilisateurs</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl font-bold tracking-wider">{referralCode}</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(referralCode);
+                            }}
+                            className="bg-white/20 hover:bg-white/30 transition-colors rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-1"
+                          >
+                            <i className="ri-file-copy-line"></i>
+                            Copier
+                          </button>
+                        </div>
+                        <p className="text-xs text-blue-100 mt-2">
+                          <i className="ri-infinity-line mr-1"></i>
+                          Pas d&apos;expiration - 5% de commission
+                        </p>
                       </div>
-                    </div>
+
+                      {/* Code expert (48h expiry) */}
+                      <div className="bg-gradient-to-r from-green-500 to-teal-600 rounded-xl p-4 text-white">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <i className="ri-vip-crown-line text-lg"></i>
+                          <p className="text-sm font-semibold">Code pour experts</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl font-bold tracking-wider">{referralCode}</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(referralCode);
+                            }}
+                            className="bg-white/20 hover:bg-white/30 transition-colors rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-1"
+                          >
+                            <i className="ri-file-copy-line"></i>
+                            Copier
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-100 mt-2">
+                          <i className="ri-time-line mr-1"></i>
+                          Expire dans 48h - 2,5% de commission - Auto-verification
+                        </p>
+                      </div>
+                    </>
                   )}
 
                   {/* Parrainages utilisateurs */}
@@ -595,6 +625,7 @@ export default function CoinsPage() {
                         transaction.type === 'expense' || transaction.type === 'spend' ? 'bg-red-100 text-red-600' :
                         transaction.type === 'refund' ? 'bg-blue-100 text-blue-600' :
                         transaction.type === 'transfer' ? 'bg-purple-100 text-purple-600' :
+                        transaction.type === 'referral_commission' ? 'bg-orange-100 text-orange-600' :
                         'bg-purple-100 text-purple-600'
                       }`}>
                         <i className={`text-sm ${
@@ -602,6 +633,7 @@ export default function CoinsPage() {
                           transaction.type === 'expense' || transaction.type === 'spend' ? 'ri-subtract-line' :
                           transaction.type === 'refund' ? 'ri-refund-line' :
                           transaction.type === 'transfer' ? 'ri-bank-card-line' :
+                          transaction.type === 'referral_commission' ? 'ri-gift-2-line' :
                           'ri-gift-line'
                         }`}></i>
                       </div>
@@ -793,15 +825,19 @@ export default function CoinsPage() {
             <div className="space-y-3 mb-6">
               <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
                 <i className="ri-user-line text-blue-600"></i>
-                <span>5% pour chaque achat de vos filleuls utilisateurs</span>
+                <span>5% pour chaque achat de vos filleuls utilisateurs pendant 6 mois</span>
               </div>
               <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
                 <i className="ri-vip-crown-line text-green-600"></i>
-                <span>2.5% pour les transactions de vos filleuls experts</span>
+                <span>2,5% sur les transactions des experts pendant 6 mois</span>
+              </div>
+              <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
+                <i className="ri-infinity-line text-purple-600"></i>
+                <span>Code utilisateur : pas d&apos;expiration</span>
               </div>
               <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
                 <i className="ri-time-line text-orange-600"></i>
-                <span>Valable pendant 6 mois</span>
+                <span>Code expert : expire dans 48h (auto-verification)</span>
               </div>
             </div>
 

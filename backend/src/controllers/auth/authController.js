@@ -32,6 +32,27 @@ class AuthController {
       let referrer = null;
       if (referralCode) {
         referrer = await prisma.user.findUnique({ where: { referralCode } });
+
+        if (referrer) {
+          // Expert referral codes expire after 48 hours from the referrer's account creation
+          // User referral codes have no expiration
+          if (userType === 'expert') {
+            // Fetch the referrer's updatedAt (code generation time) or fall back to createdAt
+            const referrerFull = await prisma.user.findUnique({
+              where: { id: referrer.id },
+              select: { updatedAt: true, createdAt: true }
+            });
+            // Use updatedAt as proxy for when the referral code was generated; fall back to createdAt
+            const codeGeneratedAt = new Date(referrerFull?.updatedAt || referrerFull?.createdAt || Date.now());
+            const expiryDate = new Date(codeGeneratedAt.getTime() + 48 * 60 * 60 * 1000); // +48 hours
+
+            if (expiryDate < new Date()) {
+              // Expert referral code has expired -- treat as if no referral code provided
+              referrer = null;
+            }
+          }
+          // User referral codes have no expiration -- no check needed
+        }
       }
 
       const hashedPassword = await bcrypt.hash(password, 12);
@@ -51,6 +72,8 @@ class AuthController {
         });
 
         if (userType === 'expert') {
+          // Auto-verify expert if they registered with a valid expert referral code
+          const autoVerify = !!(referrer && referralCode);
           await tx.expert.create({
             data: {
               userId: newUser.id,
@@ -61,7 +84,10 @@ class AuthController {
               pricePerMessage: 0,
               tags: '[]',
               languages: '[]',
-              description: 'Profil en attente de complétion.',
+              description: autoVerify
+                ? 'Profil vérifié automatiquement via parrainage.'
+                : 'Profil en attente de complétion.',
+              verified: autoVerify,
             }
           });
         }

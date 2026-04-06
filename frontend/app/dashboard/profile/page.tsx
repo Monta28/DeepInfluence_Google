@@ -129,7 +129,7 @@ export default function ProfilePage() {
     const [availabilityLoading, setAvailabilityLoading] = useState(false);
     const [availabilitySuccess, setAvailabilitySuccess] = useState('');
 
-    const isVerificationFormValid = docType && docFront && selfie && bankDetails && bankDocument && (docType === 'PASSPORT' || docBack);
+    const isVerificationFormValid = docType && docFront && selfie && (docType === 'PASSPORT' || docBack);
     
     useEffect(() => {
         if (!isAuthLoading) {
@@ -424,18 +424,16 @@ export default function ProfilePage() {
         }
     };
 
-    const generateTimeOptions = () => {
-        const options = [];
+    const timeOptions = useMemo(() => {
+        const options: string[] = [];
         for (let h = 6; h <= 22; h++) {
-            for (let m = 0; m < 60; m += 30) {
+            for (let m = 0; m < 60; m += 15) {
                 const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
                 options.push(time);
             }
         }
         return options;
-    };
-
-    const timeOptions = generateTimeOptions();
+    }, []);
 
     const generatePreviewSlots = () => {
         const slots: string[] = [];
@@ -491,12 +489,34 @@ export default function ProfilePage() {
                     avatarUrl = `${backendUrl}${uploadResponse.data.url}`;
                 } else { throw new Error(uploadResponse.message || "Erreur de l'upload d'image."); }
             }
-            const profileData = { ...userInfo, avatar: avatarUrl, ...expertInfo };
+            const profileData = { ...userInfo, avatar: avatarUrl };
             const response = await ApiService.updateUserProfile(profileData);
-            if (response.success && response.data) {
-                updateUser(response.data);
-                setSuccess('Profil mis à jour !'); setIsEditing(false); setAvatarFile(null); setAvatarFileUrl(null);
-            } else { setError(response.message || 'Erreur de mise à jour.'); }
+            if (!response.success) { setError(response.message || 'Erreur de mise à jour.'); return; }
+
+            // Update expert-specific fields separately
+            if (user?.userType === 'expert' && user?.expert) {
+                const expertPayload: any = {
+                    specialty: expertInfo.specialty,
+                    hourlyRate: Number(expertInfo.hourlyRate) || 0,
+                    minuteRate: Number(expertInfo.minuteRate) || 0,
+                    pricePerMessage: Number(expertInfo.pricePerMessage) || 0,
+                    videoMessageRate: Number(expertInfo.videoMessageRate) || 0,
+                    tags: Array.isArray(expertInfo.tags) ? expertInfo.tags.join(', ') : expertInfo.tags,
+                    languages: Array.isArray(expertInfo.languages) ? expertInfo.languages.join(', ') : expertInfo.languages,
+                    category: expertInfo.categories.length > 0 ? expertInfo.categories[0] : expertInfo.category,
+                    categories: expertInfo.categories,
+                    country: expertInfo.country,
+                    linkedinUrl: expertInfo.linkedinUrl,
+                    rnePatente: expertInfo.rnePatente,
+                };
+                const expertRes = await ApiService.updateExpert(user.expert.id, expertPayload);
+                if (!expertRes.success) { setError(expertRes.message || 'Erreur mise à jour expert.'); return; }
+            }
+
+            // Refresh user data
+            const meRes = await ApiService.getMe();
+            if (meRes.success && meRes.data) { updateUser(meRes.data); }
+            setSuccess('Profil mis à jour !'); setIsEditing(false); setAvatarFile(null); setAvatarFileUrl(null);
         } catch (err: any) { setError(err.message || 'Erreur de sauvegarde.'); } 
         finally { setLoading(false); }
     };

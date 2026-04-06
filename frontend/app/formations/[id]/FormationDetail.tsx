@@ -254,8 +254,42 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'apercu':
+        const parsedLearningObjectives = (() => {
+          if (!formation.learningObjectives) return [];
+          try {
+            const parsed = typeof formation.learningObjectives === 'string' ? JSON.parse(formation.learningObjectives) : formation.learningObjectives;
+            return Array.isArray(parsed) ? parsed : [];
+          } catch { return []; }
+        })();
         return (
           <div className="space-y-8">
+            {/* Target Audience */}
+            {formation.targetAudience && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  <i className="ri-group-line mr-2 text-blue-600"></i>Public cible
+                </h3>
+                <p className="text-gray-700 dark:text-gray-200">{formation.targetAudience}</p>
+              </div>
+            )}
+
+            {/* Learning Objectives */}
+            {parsedLearningObjectives.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                  <i className="ri-lightbulb-line mr-2 text-yellow-500"></i>Ce que vous apprendrez
+                </h3>
+                <ul className="space-y-3">
+                  {parsedLearningObjectives.map((obj: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <i className="ri-checkbox-circle-line text-green-600 mr-3 mt-0.5"></i>
+                      <span className="text-gray-700 dark:text-gray-200">{obj}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
@@ -270,7 +304,7 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
                   ))}
                 </ul>
               </div>
-              
+
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                   Prérequis
@@ -319,40 +353,84 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
         );
 
       case 'programme':
+        const parsedStructuredModules = (() => {
+          if (!formation.structuredModules) return null;
+          try {
+            const parsed = typeof formation.structuredModules === 'string' ? JSON.parse(formation.structuredModules) : formation.structuredModules;
+            return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+          } catch { return null; }
+        })();
+
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                 Programme détaillé - {formation.duration}
               </h3>
-              <p className="text-gray-600 dark:text-gray-300">{(formation.program || []).length} sessions de formation</p>
+              <p className="text-gray-600 dark:text-gray-300">
+                {parsedStructuredModules
+                  ? `${parsedStructuredModules.length} modules`
+                  : `${(formation.program || []).length} sessions de formation`}
+              </p>
             </div>
-            
-            <div className="space-y-4">
-              {(formation.program || []).map((session: any, index: number) => {
-                const isObj = session && typeof session === 'object';
-                const week = isObj && session.week ? session.week : index + 1;
-                const title = isObj && session.title ? session.title : (typeof session === 'string' ? session : `Module ${index + 1}`);
-                const content = isObj && session.content ? session.content : '';
-                const duration = isObj && session.duration ? session.duration : '';
-                return (
-                  <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold mr-4">
-                          {week}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white">{title}</h4>
-                          {content && <p className="text-sm text-gray-600 dark:text-gray-300">{content}</p>}
-                        </div>
+
+            {/* Structured modules if available */}
+            {parsedStructuredModules ? (
+              <div className="space-y-6">
+                {parsedStructuredModules.map((mod: any, mIdx: number) => (
+                  <div key={mIdx} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 px-6 py-4 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold flex-shrink-0">
+                        {mIdx + 1}
                       </div>
-                      {duration && <span className="text-sm text-blue-600 font-medium">{duration}</span>}
+                      <div>
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-lg">{mod.title || `Module ${mIdx + 1}`}</h4>
+                        {mod.description && <p className="text-sm text-gray-600 dark:text-gray-300">{mod.description}</p>}
+                      </div>
+                      {mod.duration && <span className="ml-auto text-sm text-blue-600 font-medium whitespace-nowrap">{mod.duration}</span>}
                     </div>
+                    {Array.isArray(mod.subModules) && mod.subModules.length > 0 && (
+                      <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {mod.subModules.map((sub: any, sIdx: number) => (
+                          <li key={sIdx} className="px-6 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                            <i className="ri-play-circle-line text-blue-500"></i>
+                            <span className="text-gray-700 dark:text-gray-200 flex-1">{typeof sub === 'string' ? sub : (sub.title || sub.name || `Sous-module ${sIdx + 1}`)}</span>
+                            {sub.duration && <span className="text-xs text-gray-500 dark:text-gray-400">{sub.duration}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            ) : (
+              /* Fallback to basic program list */
+              <div className="space-y-4">
+                {(formation.program || []).map((session: any, index: number) => {
+                  const isObj = session && typeof session === 'object';
+                  const week = isObj && session.week ? session.week : index + 1;
+                  const title = isObj && session.title ? session.title : (typeof session === 'string' ? session : `Module ${index + 1}`);
+                  const content = isObj && session.content ? session.content : '';
+                  const duration = isObj && session.duration ? session.duration : '';
+                  return (
+                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold mr-4">
+                            {week}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{title}</h4>
+                            {content && <p className="text-sm text-gray-600 dark:text-gray-300">{content}</p>}
+                          </div>
+                        </div>
+                        {duration && <span className="text-sm text-blue-600 font-medium">{duration}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
 
@@ -578,7 +656,7 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
               </span>
             </div>
             
-              <h1 className="text-4xl md:text-5xl font-bold mb-6 flex items-center gap-3">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 flex items-center gap-3">
                 {formation.title}
                 <button
                   onClick={handleFavorite}
@@ -598,7 +676,23 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
                 </span>
               )}
             </h1>
-            
+
+            {formation.subtitle && (
+              <p className="text-2xl text-blue-200 mb-4 font-light">{formation.subtitle}</p>
+            )}
+
+            {/* Promo banner */}
+            {formation.promoCode && formation.promoDiscount && (
+              <div className="mb-4 inline-flex items-center gap-2 bg-yellow-400/90 text-yellow-900 px-4 py-2 rounded-full text-sm font-semibold">
+                <i className="ri-gift-line"></i>
+                Code promo <span className="font-bold">{formation.promoCode}</span> : -{formation.promoDiscount}% de réduction
+              </div>
+            )}
+
+            {formation.shortDescription && (
+              <p className="text-lg text-blue-50 mb-4 leading-relaxed">{formation.shortDescription}</p>
+            )}
+
             <p className="text-xl text-blue-100 mb-8">
               {formation.description}
             </p>
@@ -615,8 +709,14 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
               </div>
               <div className="flex items-center">
                 <i className="ri-calendar-line mr-2"></i>
-                <span>Début: {formatDate(formation.nextSession)}</span>
+                <span>Début: {formatDate(formation.startDate || formation.nextSession)}</span>
               </div>
+              {formation.endDate && (
+                <div className="flex items-center">
+                  <i className="ri-calendar-check-line mr-2"></i>
+                  <span>Fin: {formatDate(formation.endDate)}</span>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center space-x-6">
@@ -825,8 +925,20 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
               <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
                 <div className="flex items-center">
                   <i className="ri-calendar-line mr-3 text-blue-600"></i>
-                  <span>Début: {formatDate(formation.nextSession)}</span>
+                  <span>Début: {formatDate(formation.startDate || formation.nextSession)}</span>
                 </div>
+                {formation.endDate && (
+                  <div className="flex items-center">
+                    <i className="ri-calendar-check-line mr-3 text-blue-600"></i>
+                    <span>Fin: {formatDate(formation.endDate)}</span>
+                  </div>
+                )}
+                {formation.frequency && (
+                  <div className="flex items-center">
+                    <i className="ri-repeat-line mr-3 text-blue-600"></i>
+                    <span>Fréquence: {formation.frequency}</span>
+                  </div>
+                )}
                 {formation.schedule && (
                   <div className="flex items-center">
                     <i className="ri-time-line mr-3 text-blue-600"></i>
@@ -836,7 +948,13 @@ export default function FormationDetail({ formationId }: FormationDetailProps) {
                 {formation.language && (
                   <div className="flex items-center">
                     <i className="ri-global-line mr-3 text-blue-600"></i>
-                    <span>{formation.language}</span>
+                    <span>Langue: {formation.language}</span>
+                  </div>
+                )}
+                {formation.targetAudience && (
+                  <div className="flex items-center">
+                    <i className="ri-group-line mr-3 text-blue-600"></i>
+                    <span>{formation.targetAudience}</span>
                   </div>
                 )}
                 {formation.support && (

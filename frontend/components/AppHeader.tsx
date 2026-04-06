@@ -380,7 +380,7 @@ export default function AppHeader() {
   };
 
   const navLinks = [
-    { href: '/', label: 'Dashboard', icon: 'ri-dashboard-line', isPublic: true },
+    { href: '/dashboard', label: 'Dashboard', icon: 'ri-dashboard-line', isPublic: false },
     { href: '/experts', label: 'Experts', icon: 'ri-user-star-line', isPublic: true },
     { href: '/formations', label: 'Formations', icon: 'ri-graduation-cap-line', isPublic: true },
     { href: '/videos', label: 'Vidéos', icon: 'ri-play-circle-line', isPublic: true },
@@ -515,7 +515,7 @@ export default function AppHeader() {
                       <span className="hidden sm:inline">{user.coins || 0}</span>
                     </button>
                     {showCoinsPopup && (
-                      <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border p-4 w-max whitespace-nowrap z-50">
+                      <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border p-4 w-[85vw] sm:w-max sm:whitespace-nowrap max-w-[300px] z-50">
                         <h3 className="font-semibold mb-2">Mes Coins</h3>
                         <p className="text-2xl font-bold text-yellow-600 mb-1">{user.coins || 0} coins disponibles</p>
                         {blockedCoins > 0 && (
@@ -651,7 +651,7 @@ export default function AppHeader() {
                       )}
                     </button>
                     {showNotifications && (
-                      <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border p-4 min-w-[350px] z-50">
+                      <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border p-4 w-[90vw] sm:w-[350px] max-w-[350px] max-h-[80vh] overflow-y-auto z-50">
                         <div className="space-y-3">
                           <div>
                             <div className="flex items-center justify-between mb-1">

@@ -1,18 +1,20 @@
+'use client';
+
 import AppHeader from '@/components/AppHeader';
 import Footer from '@/components/Footer';
 
 export default function MentionsLegalesPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppHeader />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Mentions Légales</h1>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">Mentions L&eacute;gales</h1>
 
-        <div className="bg-white rounded-2xl shadow-sm p-8 space-y-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 space-y-8">
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Éditeur du site</h2>
-            <div className="text-gray-700 space-y-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">1. Éditeur du site</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-2">
               <p><strong>Raison sociale :</strong> DeepInfluence SAS</p>
               <p><strong>Capital social :</strong> 50 000 €</p>
               <p><strong>Siège social :</strong> 123 Avenue des Champs-Élysées, 75008 Paris, France</p>
@@ -25,8 +27,8 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Directeur de la publication</h2>
-            <div className="text-gray-700">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">2. Directeur de la publication</h2>
+            <div className="text-gray-700 dark:text-gray-300">
               <p><strong>Nom :</strong> Jean Dupont</p>
               <p><strong>Fonction :</strong> Président</p>
               <p><strong>Email :</strong> direction@deepinfluence.com</p>
@@ -34,13 +36,13 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">3. Hébergement</h2>
-            <div className="text-gray-700 space-y-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">3. Hébergement</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-2">
               <p><strong>Hébergeur :</strong> Vercel Inc.</p>
               <p><strong>Adresse :</strong> 340 S Lemon Ave #4133, Walnut, CA 91789, USA</p>
               <p><strong>Site web :</strong> https://vercel.com</p>
             </div>
-            <div className="text-gray-700 space-y-2 mt-4">
+            <div className="text-gray-700 dark:text-gray-300 space-y-2 mt-4">
               <p><strong>Base de données :</strong> Railway Corp.</p>
               <p><strong>Adresse :</strong> 548 Market St, San Francisco, CA 94104, USA</p>
               <p><strong>Site web :</strong> https://railway.app</p>
@@ -48,8 +50,8 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Propriété intellectuelle</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">4. Propriété intellectuelle</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 Le site DeepInfluence et l\'ensemble de son contenu (textes, images, vidéos, logos, icônes) sont la propriété exclusive de DeepInfluence SAS, sauf mention contraire.
               </p>
@@ -63,8 +65,8 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">5. Protection des données personnelles</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">5. Protection des données personnelles</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d\'un droit d\'accès, de rectification, de suppression et de portabilité de vos données personnelles.
               </p>
@@ -78,8 +80,8 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Cookies</h2>
-            <div className="text-gray-700">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">6. Cookies</h2>
+            <div className="text-gray-700 dark:text-gray-300">
               <p>
                 Le site utilise des cookies pour améliorer l\'expérience utilisateur. Pour en savoir plus, consultez notre <a href="/cookies" className="text-purple-600 hover:underline">Politique de Cookies</a>.
               </p>
@@ -87,8 +89,8 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Responsabilité</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">7. Responsabilité</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 DeepInfluence s\'efforce d\'assurer l\'exactitude et la mise à jour des informations diffusées sur ce site, dont elle se réserve le droit de corriger le contenu à tout moment et sans préavis.
               </p>
@@ -99,8 +101,8 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Loi applicable</h2>
-            <div className="text-gray-700">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">8. Loi applicable</h2>
+            <div className="text-gray-700 dark:text-gray-300">
               <p>
                 Les présentes mentions légales sont régies par le droit français. En cas de litige, et après échec de toute tentative de résolution amiable, les tribunaux français seront seuls compétents.
               </p>
@@ -108,8 +110,8 @@ export default function MentionsLegalesPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Médiation</h2>
-            <div className="text-gray-700">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">9. Médiation</h2>
+            <div className="text-gray-700 dark:text-gray-300">
               <p>
                 Conformément aux articles L.616-1 et R.616-1 du Code de la consommation, nous proposons un dispositif de médiation de la consommation. L\'entité de médiation retenue est : CNPM - MÉDIATION DE LA CONSOMMATION.
               </p>
@@ -117,7 +119,7 @@ export default function MentionsLegalesPage() {
             </div>
           </section>
 
-          <div className="text-center text-gray-500 text-sm pt-8 border-t border-gray-200">
+          <div className="text-center text-gray-500 dark:text-gray-400 text-sm pt-8 border-t border-gray-200 dark:border-gray-700">
             Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>

@@ -40,7 +40,21 @@
       "Bash(ping:*)",
       "Bash(git config:*)",
       "Bash(git branch:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(npx prisma migrate reset:*)",
+      "Bash(wc -l:*)",
+      "Bash(npm run seed:*)",
+      "Bash(npx prisma db seed:*)",
+      "Bash(tail:*)",
+      "Bash(cmd //c \"taskkill /PID 57132 /F\")",
+      "Bash(npx next:*)",
+      "Bash(ssh:*)",
+      "Bash(gcloud --version:*)",
+      "Bash(gcloud compute instances list:*)",
+      "Bash(rsync:*)",
+      "Bash(tar:*)",
+      "Bash(scp:*)"
     ],
     "deny": [],
     "ask": []

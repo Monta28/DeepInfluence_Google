@@ -15,12 +15,20 @@ export default function ExpertFilters({
 }: ExpertFiltersProps) {
   const categories = [
     { id: 'all', name: 'Tous les experts', count: 656 },
-    { id: 'business', name: 'Business', count: 127 },
-    { id: 'bien-etre', name: 'Bien-être', count: 89 },
-    { id: 'developpement', name: 'Développement personnel', count: 156 },
-    { id: 'marketing', name: 'Marketing', count: 94 },
-    { id: 'technologie', name: 'Technologie', count: 78 },
-    { id: 'finance', name: 'Finance', count: 112 }
+    { id: 'Business', name: 'Business', count: 127 },
+    { id: 'Bien-être', name: 'Bien-être', count: 89 },
+    { id: 'Développement personnel', name: 'Développement personnel', count: 156 },
+    { id: 'Marketing', name: 'Marketing', count: 94 },
+    { id: 'Technologie', name: 'Technologie', count: 78 },
+    { id: 'Finance', name: 'Finance', count: 112 },
+    { id: 'Coaching', name: 'Coaching', count: 0 },
+    { id: 'Santé', name: 'Santé', count: 0 },
+    { id: 'Juridique', name: 'Juridique', count: 0 },
+    { id: 'Immobilier', name: 'Immobilier', count: 0 },
+    { id: 'E-commerce', name: 'E-commerce', count: 0 },
+    { id: 'Crypto', name: 'Crypto', count: 0 },
+    { id: 'Design graphique', name: 'Design graphique', count: 0 },
+    { id: 'Éducation', name: 'Éducation', count: 0 }
   ];
 
   return (

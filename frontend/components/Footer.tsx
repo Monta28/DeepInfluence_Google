@@ -62,7 +62,9 @@ export default function Footer() {
               <li><Link href="/mentions-legales" className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors cursor-pointer">Mentions légales</Link></li>
               <li><Link href="/confidentialite" className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors cursor-pointer">Confidentialité</Link></li>
               <li><Link href="/cgu" className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors cursor-pointer">CGU</Link></li>
-              <li><Link href="/cookies" className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors cursor-pointer">Cookies</Link></li>
+              <li><Link href="/privacy" className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors cursor-pointer">Privacy Policy</Link></li>
+              <li><Link href="/refund" className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors cursor-pointer">Remboursement</Link></li>
+              <li><Link href="/about" className="text-gray-400 dark:text-gray-500 hover:text-white transition-colors cursor-pointer">À propos</Link></li>
             </ul>
           </div>
         </div>

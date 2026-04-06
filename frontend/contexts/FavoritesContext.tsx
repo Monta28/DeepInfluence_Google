@@ -72,8 +72,9 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
   const toggleVideo = useCallback(async (id: number) => {
     await ApiService.likeVideo(id);
+    await refresh();
     emit();
-  }, []);
+  }, [refresh]);
 
   const toggleFavoriteVideo = useCallback(async (id: number) => {
     await ApiService.toggleFavoriteVideo(id);

@@ -1,18 +1,20 @@
+'use client';
+
 import AppHeader from '@/components/AppHeader';
 import Footer from '@/components/Footer';
 
 export default function ConfidentialitePage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppHeader />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Politique de Confidentialité</h1>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">Politique de Confidentialit&eacute;</h1>
 
-        <div className="bg-white rounded-2xl shadow-sm p-8 space-y-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 space-y-8">
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Introduction</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">1. Introduction</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 Chez DeepInfluence, nous accordons une grande importance à la protection de vos données personnelles. Cette politique de confidentialité vous informe sur la manière dont nous collectons, utilisons, stockons et protégeons vos informations personnelles.
               </p>
@@ -23,9 +25,9 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Données collectées</h2>
-            <div className="text-gray-700 space-y-3">
-              <h3 className="font-bold text-lg text-gray-900 mt-4">2.1. Données que vous nous fournissez</h3>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">2. Données collectées</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white mt-4">2.1. Données que vous nous fournissez</h3>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Informations d\'identification : nom, prénom, email, mot de passe</li>
                 <li>Informations de profil : photo, biographie, spécialité (pour les experts)</li>
@@ -34,7 +36,7 @@ export default function ConfidentialitePage() {
                 <li>Contenu créé : avis, commentaires, évaluations</li>
               </ul>
 
-              <h3 className="font-bold text-lg text-gray-900 mt-4">2.2. Données collectées automatiquement</h3>
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white mt-4">2.2. Données collectées automatiquement</h3>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Données techniques : adresse IP, type de navigateur, système d\'exploitation</li>
                 <li>Données d\'utilisation : pages visitées, durée de visite, actions effectuées</li>
@@ -44,8 +46,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">3. Utilisation des données</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">3. Utilisation des données</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>Nous utilisons vos données personnelles pour :</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Créer et gérer votre compte utilisateur</li>
@@ -61,8 +63,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Partage des données</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">4. Partage des données</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>Nous ne vendons jamais vos données personnelles. Nous pouvons partager vos informations avec :</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li><strong>Les experts :</strong> pour faciliter les consultations (nom, photo de profil)</li>
@@ -73,8 +75,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">5. Sécurité des données</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">5. Sécurité des données</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>Nous mettons en œuvre des mesures de sécurité techniques et organisationnelles appropriées :</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Chiffrement SSL/TLS pour toutes les communications</li>
@@ -88,8 +90,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Conservation des données</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">6. Conservation des données</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 Nous conservons vos données personnelles aussi longtemps que nécessaire pour fournir nos services et respecter nos obligations légales :
               </p>
@@ -102,8 +104,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Vos droits (RGPD)</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">7. Vos droits (RGPD)</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>Conformément au RGPD, vous disposez des droits suivants :</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li><strong>Droit d\'accès :</strong> obtenir une copie de vos données</li>
@@ -121,8 +123,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Transferts internationaux</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">8. Transferts internationaux</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 Vos données peuvent être transférées et traitées en dehors de l\'Espace Économique Européen (EEE). Dans ce cas, nous nous assurons que des garanties appropriées sont en place (clauses contractuelles types de la Commission européenne).
               </p>
@@ -130,8 +132,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Mineurs</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">9. Mineurs</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 Notre service est destiné aux personnes âgées de 18 ans et plus. Nous ne collectons pas sciemment de données personnelles d\'enfants de moins de 18 ans.
               </p>
@@ -139,8 +141,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">10. Modifications</h2>
-            <div className="text-gray-700 space-y-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">10. Modifications</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-3">
               <p>
                 Nous pouvons mettre à jour cette politique de confidentialité occasionnellement. La date de dernière modification est indiquée ci-dessous. Nous vous encourageons à consulter régulièrement cette page.
               </p>
@@ -148,8 +150,8 @@ export default function ConfidentialitePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">11. Contact</h2>
-            <div className="text-gray-700 space-y-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">11. Contact</h2>
+            <div className="text-gray-700 dark:text-gray-300 space-y-2">
               <p><strong>Délégué à la Protection des Données (DPO) :</strong></p>
               <p>Email : dpo@deepinfluence.com</p>
               <p>Adresse : DeepInfluence SAS, 123 Avenue des Champs-Élysées, 75008 Paris, France</p>
@@ -159,7 +161,7 @@ export default function ConfidentialitePage() {
             </div>
           </section>
 
-          <div className="text-center text-gray-500 text-sm pt-8 border-t border-gray-200">
+          <div className="text-center text-gray-500 dark:text-gray-400 text-sm pt-8 border-t border-gray-200 dark:border-gray-700">
             Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
         </div>

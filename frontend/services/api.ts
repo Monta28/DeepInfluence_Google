@@ -63,6 +63,7 @@ export interface Expert {
   isFollowed?: boolean;
   verificationStatus?: string;
   reviewList?: Review[];
+  linkedinUrl?: string;
 }
 
 export interface Formation {
@@ -415,6 +416,15 @@ class ApiService {
   static async getExpert(id: number) {
     const response = await fetch(`${API_BASE_URL}/experts/${id}`, {
       headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  static async updateExpert(id: number, data: any) {
+    const response = await fetch(`${API_BASE_URL}/experts/${id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
     });
     return this.handleResponse(response);
   }
