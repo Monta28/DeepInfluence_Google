@@ -1,5 +1,8 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
+import EXPERT_CATEGORIES from '@/data/expertCategories';
+
 interface ExpertFiltersProps {
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
@@ -7,29 +10,29 @@ interface ExpertFiltersProps {
   onSearchChange: (term: string) => void;
 }
 
-export default function ExpertFilters({ 
-  selectedCategory, 
-  onCategoryChange, 
-  searchTerm, 
-  onSearchChange 
+export default function ExpertFilters({
+  selectedCategory,
+  onCategoryChange,
+  searchTerm,
+  onSearchChange
 }: ExpertFiltersProps) {
-  const categories = [
-    { id: 'all', name: 'Tous les experts', count: 656 },
-    { id: 'Business', name: 'Business', count: 127 },
-    { id: 'Bien-être', name: 'Bien-être', count: 89 },
-    { id: 'Développement personnel', name: 'Développement personnel', count: 156 },
-    { id: 'Marketing', name: 'Marketing', count: 94 },
-    { id: 'Technologie', name: 'Technologie', count: 78 },
-    { id: 'Finance', name: 'Finance', count: 112 },
-    { id: 'Coaching', name: 'Coaching', count: 0 },
-    { id: 'Santé', name: 'Santé', count: 0 },
-    { id: 'Juridique', name: 'Juridique', count: 0 },
-    { id: 'Immobilier', name: 'Immobilier', count: 0 },
-    { id: 'E-commerce', name: 'E-commerce', count: 0 },
-    { id: 'Crypto', name: 'Crypto', count: 0 },
-    { id: 'Design graphique', name: 'Design graphique', count: 0 },
-    { id: 'Éducation', name: 'Éducation', count: 0 }
-  ];
+  const [categorySearch, setCategorySearch] = useState('');
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCategories = EXPERT_CATEGORIES.filter((cat) =>
+    cat.label.toLowerCase().includes(categorySearch.toLowerCase())
+  );
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-8">
@@ -47,20 +50,68 @@ export default function ExpertFilters({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
+        <div className="flex flex-wrap gap-2 items-start">
+          <button
+            onClick={() => onCategoryChange('all')}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
+              selectedCategory === 'all'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            Toutes
+          </button>
+          <div className="relative" ref={categoryDropdownRef}>
             <button
-              key={category.id}
-              onClick={() => onCategoryChange(category.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
-                selectedCategory === category.id
+              onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedCategory !== 'all'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              {category.name} ({category.count})
+              {selectedCategory !== 'all'
+                ? EXPERT_CATEGORIES.find(c => c.label === selectedCategory)?.label || selectedCategory
+                : 'Choisir une catégorie'}
+              <i className={`ri-arrow-${categoryDropdownOpen ? 'up' : 'down'}-s-line`}></i>
             </button>
-          ))}
+            {categoryDropdownOpen && (
+              <div className="absolute z-50 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
+                <div className="p-2">
+                  <input
+                    type="text"
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                    placeholder="Rechercher une catégorie..."
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {filteredCategories.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => {
+                        onCategoryChange(cat.label);
+                        setCategoryDropdownOpen(false);
+                        setCategorySearch('');
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                        selectedCategory === cat.label
+                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
+                          : 'text-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                  {filteredCategories.length === 0 && (
+                    <p className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">Aucune catégorie trouvée</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import AppHeader from '@/components/AppHeader';
 import Footer from '@/components/Footer';
 import ExpertCard from '@/components/ExpertCard';
 import ExpertFilters from '@/components/ExpertFilters';
 import ApiService, { Expert, PublicStats } from '../../services/api';
 import { useSocket } from '@/contexts/SocketContext';
+import EXPERT_CATEGORIES from '@/data/expertCategories';
 
 export default function ExpertsPage() {
   const socket = useSocket();
@@ -83,23 +84,24 @@ export default function ExpertsPage() {
     { label: 'Domaines d\'expertise', value: stats ? `${stats.totalCategories}+` : '...', icon: 'ri-graduation-cap-line' }
   ];
 
-  const categories = [
-    { id: 'all', name: 'Toutes', icon: 'ri-apps-line' },
-    { id: 'Business', name: 'Business', icon: 'ri-briefcase-line' },
-    { id: 'Marketing', name: 'Marketing', icon: 'ri-megaphone-line' },
-    { id: 'Technologie', name: 'Technologie', icon: 'ri-computer-line' },
-    { id: 'Bien-être', name: 'Bien-être', icon: 'ri-heart-line' },
-    { id: 'Finance', name: 'Finance', icon: 'ri-money-dollar-circle-line' },
-    { id: 'Développement personnel', name: 'Développement personnel', icon: 'ri-user-star-line' },
-    { id: 'Coaching', name: 'Coaching', icon: 'ri-team-line' },
-    { id: 'Santé', name: 'Santé', icon: 'ri-heart-pulse-line' },
-    { id: 'Juridique', name: 'Juridique', icon: 'ri-scales-line' },
-    { id: 'Immobilier', name: 'Immobilier', icon: 'ri-building-line' },
-    { id: 'E-commerce', name: 'E-commerce', icon: 'ri-shopping-cart-line' },
-    { id: 'Crypto', name: 'Crypto', icon: 'ri-bit-coin-line' },
-    { id: 'Design graphique', name: 'Design graphique', icon: 'ri-palette-line' },
-    { id: 'Éducation', name: 'Éducation', icon: 'ri-graduation-cap-line' },
-  ];
+  const [categorySearch, setCategorySearch] = useState('');
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCategories = EXPERT_CATEGORIES.filter((cat) =>
+    cat.label.toLowerCase().includes(categorySearch.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -164,12 +166,53 @@ export default function ExpertsPage() {
                 <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher une vidéo..." className="w-full pl-12 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"/>
             </div>
-            <div className="flex flex-wrap gap-2 justify-center">
-                {categories.map((category) => (
-                    <button key={category.id} onClick={() => setSelectedCategory(category.id)} className={`px-4 py-2 rounded-full text-sm font-medium ${selectedCategory === category.id ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
-                        {category.name}
+            <div className="flex flex-wrap gap-2 justify-center items-start">
+                <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-sm font-medium ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                    Toutes
+                </button>
+                <div className="relative" ref={categoryDropdownRef}>
+                    <button
+                        onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1 ${selectedCategory !== 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                    >
+                        {selectedCategory !== 'all'
+                            ? EXPERT_CATEGORIES.find(c => c.label === selectedCategory)?.label || selectedCategory
+                            : 'Choisir une catégorie'}
+                        <i className={`ri-arrow-${categoryDropdownOpen ? 'up' : 'down'}-s-line`}></i>
                     </button>
-                ))}
+                    {categoryDropdownOpen && (
+                        <div className="absolute z-50 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
+                            <div className="p-2">
+                                <input
+                                    type="text"
+                                    value={categorySearch}
+                                    onChange={(e) => setCategorySearch(e.target.value)}
+                                    placeholder="Rechercher une catégorie..."
+                                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="max-h-60 overflow-y-auto">
+                                {filteredCategories.map((cat) => (
+                                    <button
+                                        key={cat.value}
+                                        onClick={() => {
+                                            setSelectedCategory(cat.label);
+                                            setCategoryDropdownOpen(false);
+                                            setCategorySearch('');
+                                        }}
+                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${selectedCategory === cat.label ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
+                                    >
+                                        {cat.label}
+                                    </button>
+                                ))}
+                                {filteredCategories.length === 0 && (
+                                    <p className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">Aucune catégorie trouvée</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
 

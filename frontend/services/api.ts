@@ -547,10 +547,11 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  static async enrollInFormation(id: number) {
+  static async enrollInFormation(id: number, promoCode?: string) {
     const response = await fetch(`${API_BASE_URL}/formations/${id}/enroll`, {
       method: 'POST',
-      headers: this.getAuthHeaders()
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(promoCode ? { promoCode } : {})
     });
     return this.handleResponse(response);
   }

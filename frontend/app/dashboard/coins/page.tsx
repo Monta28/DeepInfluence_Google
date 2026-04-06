@@ -608,53 +608,7 @@ export default function CoinsPage() {
               )}
             </div>
 
-            {/* Transaction History */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Historique des Transactions
-              </h3>
-
-              <div className="space-y-3">
-                {transactionHistory.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">Aucune transaction</p>
-                ) : transactionHistory.slice(0, 5).map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        transaction.type === 'purchase' || transaction.type === 'coin_purchase_flouci' ? 'bg-green-100 text-green-600' :
-                        transaction.type === 'expense' || transaction.type === 'spend' ? 'bg-red-100 text-red-600' :
-                        transaction.type === 'refund' ? 'bg-blue-100 text-blue-600' :
-                        transaction.type === 'transfer' ? 'bg-purple-100 text-purple-600' :
-                        transaction.type === 'referral_commission' ? 'bg-orange-100 text-orange-600' :
-                        'bg-purple-100 text-purple-600'
-                      }`}>
-                        <i className={`text-sm ${
-                          transaction.type === 'purchase' || transaction.type === 'coin_purchase_flouci' ? 'ri-add-line' :
-                          transaction.type === 'expense' || transaction.type === 'spend' ? 'ri-subtract-line' :
-                          transaction.type === 'refund' ? 'ri-refund-line' :
-                          transaction.type === 'transfer' ? 'ri-bank-card-line' :
-                          transaction.type === 'referral_commission' ? 'ri-gift-2-line' :
-                          'ri-gift-line'
-                        }`}></i>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {transaction.description}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(transaction.date).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`font-semibold ${
-                      (transaction.coins || transaction.amount || 0) > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {(transaction.coins || transaction.amount || 0) > 0 ? '+' : ''}{transaction.coins || transaction.amount}c
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Transaction History - removed */}
           </div>
         </div>
       </div>

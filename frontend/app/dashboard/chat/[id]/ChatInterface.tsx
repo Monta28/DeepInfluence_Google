@@ -18,6 +18,7 @@ interface Participant {
     avatar: string;
     isOnline: boolean;
     specialty: string;
+    videoMessageRate?: number;
   };
 }
 
@@ -360,6 +361,32 @@ export default function ChatInterface() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Response type indicator */}
+          <div className="px-4 py-2 border-t bg-gray-50 dark:bg-gray-750 flex-shrink-0">
+            {isConversationFree ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                  <i className="ri-gift-line text-sm"></i>
+                  Conversation gratuite
+                </span>
+              </div>
+            ) : otherParticipant && otherParticipant.videoMessageRate && otherParticipant.videoMessageRate > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                  <i className="ri-video-line text-sm"></i>
+                  Cet expert accepte les réponses vidéo
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  <i className="ri-chat-1-line text-sm"></i>
+                  Réponse texte
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Message Input with attachment support */}

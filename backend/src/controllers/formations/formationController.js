@@ -212,6 +212,11 @@ class FormationController {
         included: safeParse(formation.included, []),
         tools: safeParse(formation.tools, []),
         category: formation.category,
+        // Promo
+        promoCode: formation.promoCode,
+        promoDiscount: formation.promoDiscount,
+        promoMaxUses: formation.promoMaxUses,
+        promoCurrentUses: formation.promoCurrentUses,
         // Lien vidéoconférence - uniquement pour les inscrits ou le propriétaire
         videoConferenceLink: canAccessVideoLink ? formation.videoConferenceLink : null,
         hasVideoConferenceLink: !!formation.videoConferenceLink, // Indique si un lien existe (même si non accessible)
@@ -447,8 +452,20 @@ class FormationController {
         return ApiResponse.badRequest(res, 'Cette formation est complète');
       }
 
+      // Calculer le prix final en tenant compte du code promo
+      const { promoCode } = req.body || {};
+      let finalPrice = formation.price;
+      let promoApplied = false;
+
+      if (promoCode && formation.promoCode && promoCode === formation.promoCode) {
+        if (formation.promoDiscount && (formation.promoMaxUses == null || (formation.promoCurrentUses || 0) < formation.promoMaxUses)) {
+          finalPrice = Math.round(formation.price * (1 - formation.promoDiscount / 100));
+          promoApplied = true;
+        }
+      }
+
       // Vérifier si l'utilisateur a assez de coins
-      if (req.user.coins < formation.price) {
+      if (req.user.coins < finalPrice) {
         return ApiResponse.badRequest(res, 'Vous n\'avez pas assez de coins pour cette formation');
       }
 
@@ -466,28 +483,33 @@ class FormationController {
         await tx.user.update({
           where: { id: req.user.id },
           data: {
-            coins: { decrement: formation.price },
+            coins: { decrement: finalPrice },
             formationsFollowed: { increment: 1 }
           }
         });
 
-        // Mettre à jour le nombre de places
+        // Mettre à jour le nombre de places (et incrémenter promoCurrentUses si promo appliqué)
+        const formationUpdate = {
+          currentPlaces: { increment: 1 },
+          students: { increment: 1 }
+        };
+        if (promoApplied) {
+          formationUpdate.promoCurrentUses = { increment: 1 };
+        }
         await tx.formation.update({
           where: { id: formationId },
-          data: {
-            currentPlaces: { increment: 1 },
-            students: { increment: 1 }
-          }
+          data: formationUpdate
         });
 
         // Créer une transaction
+        const promoLabel = promoApplied ? ` (promo -${formation.promoDiscount}%)` : '';
         await tx.transaction.create({
           data: {
             userId: req.user.id,
             type: 'spend',
-            amount: formation.price * 100, // en centimes
-            coins: formation.price,
-            description: `Inscription à la formation: ${formation.title}`,
+            amount: finalPrice * 100, // en centimes
+            coins: finalPrice,
+            description: `Inscription à la formation: ${formation.title}${promoLabel}`,
             relatedId: formationId
           }
         });

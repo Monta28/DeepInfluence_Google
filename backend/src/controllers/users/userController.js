@@ -49,9 +49,10 @@ class UserController {
   static async updateProfile(req, res) {
     try {
       const userId = req.user.id;
-      const { 
+      const {
         firstName, lastName, phone, bio, location, avatar,
-        specialty, hourlyRate, pricePerMessage, tags, languages, category 
+        specialty, hourlyRate, pricePerMessage, tags, languages, category,
+        profileCompleted: forceProfileCompleted
       } = req.body;
 
       const updatedUser = await prisma.$transaction(async (tx) => {
@@ -81,11 +82,13 @@ class UserController {
           await tx.expert.update({ where: { userId: userId }, data: expertUpdateData });
 
           const currentExpert = currentUser.expert;
-          const isExpertPartComplete = (expertUpdateData.specialty || currentExpert.specialty) && (expertUpdateData.category || currentExpert.category) && (expertUpdateData.hourlyRate || currentExpert.hourlyRate) > 0;
+          const hasRate = (expertUpdateData.hourlyRate || currentExpert.hourlyRate || currentExpert.minuteRate) > 0;
+          const hasCategory = expertUpdateData.category || currentExpert.category || (currentExpert.categories && currentExpert.categories !== '[]');
+          const isExpertPartComplete = (expertUpdateData.specialty || currentExpert.specialty) && hasCategory && hasRate;
           isProfileFullyComplete = isUserPartComplete && isExpertPartComplete;
         }
 
-        if (isProfileFullyComplete && !currentUser.profileCompleted) {
+        if ((isProfileFullyComplete && !currentUser.profileCompleted) || forceProfileCompleted === true) {
           userUpdateData.profileCompleted = true;
         }
 

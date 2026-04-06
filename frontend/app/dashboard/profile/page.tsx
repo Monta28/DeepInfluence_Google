@@ -489,7 +489,7 @@ export default function ProfilePage() {
                     avatarUrl = `${backendUrl}${uploadResponse.data.url}`;
                 } else { throw new Error(uploadResponse.message || "Erreur de l'upload d'image."); }
             }
-            const profileData = { ...userInfo, avatar: avatarUrl };
+            const profileData: any = { ...userInfo, avatar: avatarUrl, profileCompleted: true };
             const response = await ApiService.updateUserProfile(profileData);
             if (!response.success) { setError(response.message || 'Erreur de mise à jour.'); return; }
 

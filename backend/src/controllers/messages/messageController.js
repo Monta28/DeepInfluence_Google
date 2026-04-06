@@ -227,7 +227,7 @@ class MessageController {
                   firstName: true,
                   lastName: true,
                   avatar: true,
-                  expert: { select: { isOnline: true, specialty: true, responseTime: true } }
+                  expert: { select: { isOnline: true, specialty: true, responseTime: true, videoMessageRate: true } }
                 }
               }
             }
@@ -244,6 +244,7 @@ class MessageController {
           const isOnline = participantUser.expert ? participantUser.expert.isOnline : false;
           const specialty = participantUser.expert ? participantUser.expert.specialty : 'Utilisateur';
           const responseTime = participantUser.expert ? participantUser.expert.responseTime : undefined;
+          const videoMessageRate = participantUser.expert ? participantUser.expert.videoMessageRate : undefined;
           const finalParticipantUser = {
             id: participantUser.id,
             firstName: participantUser.firstName,
@@ -251,7 +252,8 @@ class MessageController {
             avatar: participantUser.avatar,
             isOnline: isOnline,
             specialty: specialty,
-            responseTime
+            responseTime,
+            videoMessageRate
           };
           // Récupérer le participant courant pour remonter son unreadCount
           const meParticipant = conv.participants.find((p) => p.userId === userId);

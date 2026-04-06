@@ -33,6 +33,31 @@ export default function ReservationForm({ formationId }: ReservationFormProps) {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [promoCode, setPromoCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [promoMessage, setPromoMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleApplyPromo = () => {
+    if (!promoCode.trim() || !formation) {
+      setPromoMessage({ type: 'error', text: 'Veuillez saisir un code promo.' });
+      setDiscount(0);
+      return;
+    }
+    if (formation.promoCode && promoCode.trim() === formation.promoCode) {
+      if (formation.promoMaxUses != null && (formation.promoCurrentUses || 0) >= formation.promoMaxUses) {
+        setPromoMessage({ type: 'error', text: 'Ce code promo a atteint son nombre maximum d\'utilisations.' });
+        setDiscount(0);
+        return;
+      }
+      const pct = formation.promoDiscount || 0;
+      setDiscount(pct);
+      setPromoMessage({ type: 'success', text: `Code promo appliqué : -${pct}% de réduction !` });
+    } else {
+      setDiscount(0);
+      setPromoMessage({ type: 'error', text: 'Code promo invalide.' });
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -80,7 +105,7 @@ export default function ReservationForm({ formationId }: ReservationFormProps) {
     if (!user) { router.push('/signin'); return; }
     setIsSubmitting(true);
     try {
-      const r = await ApiService.enrollInFormation(parseInt(formationId));
+      const r = await ApiService.enrollInFormation(parseInt(formationId), discount > 0 ? promoCode.trim() : undefined);
       if (r.success) {
         setSubmitStatus('success');
         setSubmitError(null);
@@ -232,6 +257,34 @@ export default function ReservationForm({ formationId }: ReservationFormProps) {
                   </p>
                 </div>
 
+                {/* Code promo */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Code promo
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => { setPromoCode(e.target.value); setPromoMessage(null); setDiscount(0); }}
+                      placeholder="Entrez votre code promo"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyPromo}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap cursor-pointer"
+                    >
+                      Appliquer
+                    </button>
+                  </div>
+                  {promoMessage && (
+                    <p className={`text-sm mt-1 ${promoMessage.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {promoMessage.text}
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Méthode de paiement
@@ -331,41 +384,67 @@ export default function ReservationForm({ formationId }: ReservationFormProps) {
                 </div>
 
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                  <div className="flex items-center justify-between text-lg font-semibold text-gray-900 dark:text-white">
-                    <span>Total:</span>
-                    <span className="text-blue-600">{formation.price}</span>
-                  </div>
+                  {discount > 0 ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                        <span>Prix original:</span>
+                        <span className="line-through">{formation.price} coins</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-green-600 dark:text-green-400">
+                        <span>Réduction ({discount}%):</span>
+                        <span>-{Math.round(formation.price * discount / 100)} coins</span>
+                      </div>
+                      <div className="flex items-center justify-between text-lg font-semibold text-gray-900 dark:text-white">
+                        <span>Total:</span>
+                        <span className="text-green-600">{Math.round(formation.price * (1 - discount / 100))} coins</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-lg font-semibold text-gray-900 dark:text-white">
+                      <span>Total:</span>
+                      <span className="text-blue-600">{formation.price} coins</span>
+                    </div>
+                  )}
                 </div>
 
-                <button
-                  type="submit"
-                  form="reservation-form"
-                  disabled={!isFormValid || isSubmitting || ((formation.maxPlaces || 0) - (formation.currentPlaces || 0)) <= 0 || (user && typeof user.coins === 'number' ? user.coins < (formation.price || 0) : false)}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors whitespace-nowrap ${
-                    (isFormValid && !isSubmitting && ((formation.maxPlaces || 0) - (formation.currentPlaces || 0)) > 0)
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                      : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {isSubmitting
-                    ? 'Traitement...'
-                    : (((formation.maxPlaces || 0) - (formation.currentPlaces || 0)) <= 0
-                        ? 'Formation complète'
-                        : ((user && typeof user.coins === 'number' && user.coins < (formation.price || 0))
-                            ? 'Solde insuffisant'
-                            : 'Confirmer ma réservation'))}
-                </button>
+                {(() => {
+                  const effectivePrice = discount > 0 ? Math.round((formation.price || 0) * (1 - discount / 100)) : (formation.price || 0);
+                  const insufficientCoins = user && typeof user.coins === 'number' ? user.coins < effectivePrice : false;
+                  const noPlaces = ((formation.maxPlaces || 0) - (formation.currentPlaces || 0)) <= 0;
+                  return (
+                    <>
+                      <button
+                        type="submit"
+                        form="reservation-form"
+                        disabled={!isFormValid || isSubmitting || noPlaces || insufficientCoins}
+                        className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors whitespace-nowrap ${
+                          (isFormValid && !isSubmitting && !noPlaces && !insufficientCoins)
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                            : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {isSubmitting
+                          ? 'Traitement...'
+                          : (noPlaces
+                              ? 'Formation complète'
+                              : (insufficientCoins
+                                  ? 'Solde insuffisant'
+                                  : 'Confirmer ma réservation'))}
+                      </button>
 
-                <div className="text-center">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Paiement sécurisé -- Remboursement 7 jours
-                  </p>
-                </div>
-                {user && typeof user.coins === 'number' && user.coins < (formation.price || 0) && (
-                  <div className="mt-3 text-center text-sm text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded p-2">
-                    Solde insuffisant ({user.coins} coins). <Link href="/dashboard/coins" className="underline">Acheter des coins</Link>
-                  </div>
-                )}
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Paiement sécurisé -- Remboursement 7 jours
+                        </p>
+                      </div>
+                      {insufficientCoins && (
+                        <div className="mt-3 text-center text-sm text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded p-2">
+                          Solde insuffisant ({user?.coins || 0} coins). <Link href="/dashboard/coins" className="underline">Acheter des coins</Link>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
