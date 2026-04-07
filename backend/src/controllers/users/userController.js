@@ -51,9 +51,54 @@ class UserController {
       const userId = req.user.id;
       const {
         firstName, lastName, phone, bio, location, avatar,
-        specialty, hourlyRate, pricePerMessage, tags, languages, category,
+        specialty, hourlyRate, minuteRate, pricePerMessage, videoMessageRate,
+        tags, languages, category, categories, country, linkedinUrl, rnePatente,
         profileCompleted: forceProfileCompleted
       } = req.body;
+
+      const parseInteger = (value) => {
+        const parsed = parseInt(value, 10);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const toStringArray = (value) => {
+        if (value === undefined) return undefined;
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => String(item || '').trim())
+            .filter(Boolean);
+        }
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (!trimmed) return [];
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              return parsed
+                .map((item) => String(item || '').trim())
+                .filter(Boolean);
+            }
+          } catch (_) {}
+          return trimmed
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+        }
+        return [];
+      };
+
+      const toBoolean = (value) => value === true || value === 'true';
+
+      const parseStoredArray = (value) => {
+        if (!value) return [];
+        if (Array.isArray(value)) return value;
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      };
 
       const updatedUser = await prisma.$transaction(async (tx) => {
         const userUpdateData = {};
@@ -65,32 +110,80 @@ class UserController {
         if (avatar !== undefined) userUpdateData.avatar = avatar;
 
         const currentUser = await tx.user.findUnique({ where: { id: userId }, include: { expert: true } });
-        
-        const isUserPartComplete = (userUpdateData.phone || currentUser.phone) && (userUpdateData.location || currentUser.location) && (userUpdateData.bio || currentUser.bio);
+
+        if (!currentUser) {
+          throw new Error('Utilisateur non trouve');
+        }
+
+        const mergedUser = {
+          phone: userUpdateData.phone !== undefined ? userUpdateData.phone : currentUser.phone,
+          location: userUpdateData.location !== undefined ? userUpdateData.location : currentUser.location,
+          bio: userUpdateData.bio !== undefined ? userUpdateData.bio : currentUser.bio
+        };
+
+        const isUserPartComplete = Boolean(
+          mergedUser.phone &&
+          String(mergedUser.phone).trim() &&
+          mergedUser.location &&
+          String(mergedUser.location).trim() &&
+          mergedUser.bio &&
+          String(mergedUser.bio).trim()
+        );
+
         let isProfileFullyComplete = isUserPartComplete;
 
-        if (req.user.userType === 'expert') {
+        if (req.user.userType === 'expert' && currentUser.expert) {
           const expertUpdateData = {};
           if (specialty !== undefined) expertUpdateData.specialty = specialty;
-          if (hourlyRate !== undefined) expertUpdateData.hourlyRate = parseInt(hourlyRate, 10) || 0;
-          if (pricePerMessage !== undefined) expertUpdateData.pricePerMessage = parseInt(pricePerMessage, 10) || 0;
-          if (tags !== undefined) expertUpdateData.tags = JSON.stringify(tags);
-          if (languages !== undefined) expertUpdateData.languages = JSON.stringify(languages);
+          if (hourlyRate !== undefined) expertUpdateData.hourlyRate = parseInteger(hourlyRate);
+          if (minuteRate !== undefined) expertUpdateData.minuteRate = parseInteger(minuteRate);
+          if (pricePerMessage !== undefined) expertUpdateData.pricePerMessage = parseInteger(pricePerMessage);
+          if (videoMessageRate !== undefined) expertUpdateData.videoMessageRate = parseInteger(videoMessageRate);
+          if (tags !== undefined) expertUpdateData.tags = JSON.stringify(toStringArray(tags));
+          if (languages !== undefined) expertUpdateData.languages = JSON.stringify(toStringArray(languages));
           if (category !== undefined) expertUpdateData.category = category;
+          if (categories !== undefined) {
+            const parsedCategories = toStringArray(categories);
+            expertUpdateData.categories = JSON.stringify(parsedCategories);
+            if (category === undefined) {
+              expertUpdateData.category = parsedCategories[0] || '';
+            }
+          }
+          if (country !== undefined) expertUpdateData.country = country;
+          if (linkedinUrl !== undefined) expertUpdateData.linkedinUrl = linkedinUrl;
+          if (rnePatente !== undefined) expertUpdateData.rnePatente = rnePatente;
           expertUpdateData.name = `${userUpdateData.firstName || currentUser.firstName} ${userUpdateData.lastName || currentUser.lastName}`;
 
           await tx.expert.update({ where: { userId: userId }, data: expertUpdateData });
 
           const currentExpert = currentUser.expert;
-          const hasRate = (expertUpdateData.hourlyRate || currentExpert.hourlyRate || currentExpert.minuteRate) > 0;
-          const hasCategory = expertUpdateData.category || currentExpert.category || (currentExpert.categories && currentExpert.categories !== '[]');
-          const isExpertPartComplete = (expertUpdateData.specialty || currentExpert.specialty) && hasCategory && hasRate;
+          const mergedExpert = {
+            specialty: expertUpdateData.specialty !== undefined ? expertUpdateData.specialty : currentExpert.specialty,
+            category: expertUpdateData.category !== undefined ? expertUpdateData.category : currentExpert.category,
+            categories: expertUpdateData.categories !== undefined ? expertUpdateData.categories : currentExpert.categories,
+            hourlyRate: expertUpdateData.hourlyRate !== undefined ? expertUpdateData.hourlyRate : currentExpert.hourlyRate,
+            minuteRate: expertUpdateData.minuteRate !== undefined ? expertUpdateData.minuteRate : currentExpert.minuteRate
+          };
+
+          const mergedCategories = parseStoredArray(mergedExpert.categories);
+          const hasRate = Math.max(
+            Number(mergedExpert.hourlyRate || 0),
+            Number(mergedExpert.minuteRate || 0)
+          ) > 0;
+          const hasCategory = Boolean(
+            (mergedExpert.category && String(mergedExpert.category).trim()) ||
+            mergedCategories.length > 0
+          );
+          const isExpertPartComplete = Boolean(
+            mergedExpert.specialty &&
+            String(mergedExpert.specialty).trim() &&
+            hasCategory &&
+            hasRate
+          );
           isProfileFullyComplete = isUserPartComplete && isExpertPartComplete;
         }
 
-        if ((isProfileFullyComplete && !currentUser.profileCompleted) || forceProfileCompleted === true) {
-          userUpdateData.profileCompleted = true;
-        }
+        userUpdateData.profileCompleted = toBoolean(forceProfileCompleted) || isProfileFullyComplete;
 
         return tx.user.update({
           where: { id: userId },

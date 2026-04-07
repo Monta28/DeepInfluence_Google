@@ -484,6 +484,24 @@ class ExpertController {
 
       // Préparer les données à mettre à jour
       const normalize = (s) => s ? s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() : s;
+      const toStringArray = (value) => {
+        if (value === undefined) return undefined;
+        if (Array.isArray(value)) {
+          return value.map((item) => String(item || '').trim()).filter(Boolean);
+        }
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (!trimmed) return [];
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              return parsed.map((item) => String(item || '').trim()).filter(Boolean);
+            }
+          } catch (_) {}
+          return trimmed.split(',').map((item) => item.trim()).filter(Boolean);
+        }
+        return [];
+      };
       const updateData = {};
       
       if (name !== undefined) {
@@ -499,10 +517,10 @@ class ExpertController {
       if (minuteRate !== undefined) updateData.minuteRate = parseInt(minuteRate);
       if (videoMessageRate !== undefined) updateData.videoMessageRate = parseInt(videoMessageRate);
       if (image !== undefined) updateData.image = image;
-      if (tags !== undefined) updateData.tags = JSON.stringify(tags);
+      if (tags !== undefined) updateData.tags = JSON.stringify(toStringArray(tags));
       if (category !== undefined) updateData.category = category;
-      if (categories !== undefined) updateData.categories = Array.isArray(categories) ? JSON.stringify(categories) : categories;
-      if (languages !== undefined) updateData.languages = JSON.stringify(languages);
+      if (categories !== undefined) updateData.categories = JSON.stringify(toStringArray(categories));
+      if (languages !== undefined) updateData.languages = JSON.stringify(toStringArray(languages));
       if (description !== undefined) updateData.description = description;
       if (isOnline !== undefined) updateData.isOnline = isOnline;
       if (nextAvailable !== undefined) updateData.nextAvailable = nextAvailable;

@@ -44,7 +44,9 @@ export interface Expert {
   rating: number;
   reviews: number;
   hourlyRate: number;
+  minuteRate?: number;
   pricePerMessage: number;
+  videoMessageRate?: number;
   image?: string;
   isOnline: boolean;
   nextAvailable?: string;
@@ -52,6 +54,7 @@ export interface Expert {
   verified: boolean;
   isVerified?: boolean; // Alias for verified
   category: string;
+  categories?: string[];
   languages: string[];
   responseTime?: string;
   sessions: number;
@@ -63,7 +66,9 @@ export interface Expert {
   isFollowed?: boolean;
   verificationStatus?: string;
   reviewList?: Review[];
+  country?: string;
   linkedinUrl?: string;
+  rnePatente?: string;
 }
 
 export interface Formation {
@@ -821,6 +826,18 @@ class ApiService {
     bio?: string;
     location?: string;
     avatar?: string;
+    specialty?: string;
+    hourlyRate?: number;
+    minuteRate?: number;
+    pricePerMessage?: number;
+    videoMessageRate?: number;
+    tags?: string[];
+    languages?: string[];
+    category?: string;
+    categories?: string[];
+    country?: string;
+    linkedinUrl?: string;
+    rnePatente?: string;
   }) {
     const response = await fetch(`${API_BASE_URL}/users/profile`, {
       method: 'PUT',

@@ -143,6 +143,7 @@ export default function ProfilePage() {
                 const exp = user.expert as any;
                 let cats: string[] = [];
                 try { cats = exp.categories ? (typeof exp.categories === 'string' ? JSON.parse(exp.categories) : exp.categories) : []; } catch { cats = []; }
+                const normalizedCategories = cats.length > 0 ? cats : (exp.category ? [exp.category] : []);
                 setExpertInfo({
                     specialty: exp.specialty || '',
                     hourlyRate: exp.hourlyRate || 0,
@@ -151,8 +152,8 @@ export default function ProfilePage() {
                     videoMessageRate: exp.videoMessageRate || 0,
                     tags: Array.isArray(exp.tags) ? exp.tags : (exp.tags ? JSON.parse(exp.tags as any) : []),
                     languages: Array.isArray(exp.languages) ? exp.languages : (exp.languages ? JSON.parse(exp.languages as any) : []),
-                    category: exp.category || '',
-                    categories: cats,
+                    category: normalizedCategories[0] || exp.category || '',
+                    categories: normalizedCategories,
                     country: exp.country || '',
                     linkedinUrl: exp.linkedinUrl || '',
                     rnePatente: exp.rnePatente || ''
@@ -462,7 +463,7 @@ export default function ProfilePage() {
         if (numericFields.includes(name)) {
             setExpertInfo(prev => ({ ...prev, [name]: Number(value) || 0 }));
         } else if (name === 'tags' || name === 'languages') {
-            setExpertInfo(prev => ({ ...prev, [name]: value.split(',').map((item: any) => item.trim()) }));
+            setExpertInfo(prev => ({ ...prev, [name]: value.split(',').map((item: any) => item.trim()).filter(Boolean) }));
         } else {
             setExpertInfo(prev => ({ ...prev, [name]: value }));
         }
@@ -489,29 +490,25 @@ export default function ProfilePage() {
                     avatarUrl = `${backendUrl}${uploadResponse.data.url}`;
                 } else { throw new Error(uploadResponse.message || "Erreur de l'upload d'image."); }
             }
-            const profileData: any = { ...userInfo, avatar: avatarUrl, profileCompleted: true };
-            const response = await ApiService.updateUserProfile(profileData);
-            if (!response.success) { setError(response.message || 'Erreur de mise à jour.'); return; }
-
-            // Update expert-specific fields separately
+            const profileData: any = { ...userInfo, avatar: avatarUrl };
             if (user?.userType === 'expert' && user?.expert) {
-                const expertPayload: any = {
+                Object.assign(profileData, {
                     specialty: expertInfo.specialty,
                     hourlyRate: Number(expertInfo.hourlyRate) || 0,
                     minuteRate: Number(expertInfo.minuteRate) || 0,
                     pricePerMessage: Number(expertInfo.pricePerMessage) || 0,
                     videoMessageRate: Number(expertInfo.videoMessageRate) || 0,
-                    tags: Array.isArray(expertInfo.tags) ? expertInfo.tags.join(', ') : expertInfo.tags,
-                    languages: Array.isArray(expertInfo.languages) ? expertInfo.languages.join(', ') : expertInfo.languages,
+                    tags: Array.isArray(expertInfo.tags) ? expertInfo.tags : [],
+                    languages: Array.isArray(expertInfo.languages) ? expertInfo.languages : [],
                     category: expertInfo.categories.length > 0 ? expertInfo.categories[0] : expertInfo.category,
                     categories: expertInfo.categories,
                     country: expertInfo.country,
                     linkedinUrl: expertInfo.linkedinUrl,
                     rnePatente: expertInfo.rnePatente,
-                };
-                const expertRes = await ApiService.updateExpert(user.expert.id, expertPayload);
-                if (!expertRes.success) { setError(expertRes.message || 'Erreur mise à jour expert.'); return; }
+                });
             }
+            const response = await ApiService.updateUserProfile(profileData);
+            if (!response.success) { setError(response.message || 'Erreur de mise à jour.'); return; }
 
             // Refresh user data
             const meRes = await ApiService.getMe();
@@ -670,13 +667,19 @@ export default function ProfilePage() {
                                                                     checked={expertInfo.categories.includes(cat)}
                                                                     disabled={!isEditing}
                                                                     onChange={() => {
-                                                                        setExpertInfo(prev => ({
-                                                                            ...prev,
-                                                                            categories: prev.categories.includes(cat)
+                                                                        setExpertInfo(prev => {
+                                                                            const nextCategories = prev.categories.includes(cat)
                                                                                 ? prev.categories.filter(c => c !== cat)
-                                                                                : [...prev.categories, cat],
-                                                                            category: prev.categories.includes(cat) ? prev.category : cat
-                                                                        }));
+                                                                                : [...prev.categories, cat];
+                                                                            const nextCategory = nextCategories.includes(prev.category)
+                                                                                ? prev.category
+                                                                                : (nextCategories[0] || '');
+                                                                            return {
+                                                                                ...prev,
+                                                                                categories: nextCategories,
+                                                                                category: nextCategory
+                                                                            };
+                                                                        });
                                                                     }}
                                                                     className="mr-2 rounded"
                                                                 />
@@ -689,7 +692,13 @@ export default function ProfilePage() {
                                                             {expertInfo.categories.map(cat => (
                                                                 <span key={cat} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                                                                     {cat}
-                                                                    {isEditing && <button type="button" onClick={() => setExpertInfo(prev => ({ ...prev, categories: prev.categories.filter(c => c !== cat) }))} className="ml-1 text-blue-500 hover:text-red-500"><i className="ri-close-line text-xs"></i></button>}
+                                                                    {isEditing && <button type="button" onClick={() => setExpertInfo(prev => {
+                                                                        const nextCategories = prev.categories.filter(c => c !== cat);
+                                                                        const nextCategory = nextCategories.includes(prev.category)
+                                                                            ? prev.category
+                                                                            : (nextCategories[0] || '');
+                                                                        return { ...prev, categories: nextCategories, category: nextCategory };
+                                                                    })} className="ml-1 text-blue-500 hover:text-red-500"><i className="ri-close-line text-xs"></i></button>}
                                                                 </span>
                                                             ))}
                                                         </div>
